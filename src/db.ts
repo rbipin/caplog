@@ -8,7 +8,7 @@ export async function initDB(): Promise<void> {
 
 export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   if (!db) throw new Error('DB not initialized');
-  return db.select<T[]>(sql, params);
+  return db.select(sql, params) as Promise<T[]>;
 }
 
 export async function execute(sql: string, params: unknown[] = []): Promise<void> {
