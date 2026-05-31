@@ -66,7 +66,7 @@ class LogModal {
       if (e.target === this.overlay) this.close();
     });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.close();
+      if (e.key === 'Escape' && this.overlay.classList.contains('visible')) this.close();
     });
   }
 
@@ -391,7 +391,7 @@ class SettingsModal {
     document.getElementById('settingsCloseBtn')!.addEventListener('click', () => this.close());
     this.overlay.addEventListener('click', (e) => { if (e.target === this.overlay) this.close(); });
     document.getElementById('saveSettingsBtn')!.addEventListener('click', () => { void this.save(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.overlay.classList.contains('visible')) this.close(); });
   }
 
   async open(): Promise<void> {
@@ -406,7 +406,7 @@ class SettingsModal {
 
   private async save(): Promise<void> {
     const key = this.apiKeyInput.value.trim();
-    if (key) await setSetting('anthropic_api_key', key);
+    await setSetting('anthropic_api_key', key);
     this.close();
   }
 }
@@ -449,7 +449,7 @@ class App {
 
     document.getElementById('sidebarToggleBtn')!.addEventListener('click', () => this.toggleSidebar());
     document.getElementById('viewLogBtn')!.addEventListener('click', () => this.openLogModal());
-    document.getElementById('settingsBtn')?.addEventListener('click', () => { void this.settings.open(); });
+    document.getElementById('settingsBtn')!.addEventListener('click', () => { void this.settings.open(); });
   }
 
   private toggleSidebar(): void {
