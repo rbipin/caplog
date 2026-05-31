@@ -1,5 +1,15 @@
 import { initDB, query, execute } from './db.js';
 
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TodoItem {
@@ -135,7 +145,7 @@ class TodoPanel {
     const metaHtml = (() => {
       const parts: string[] = [];
       if (todo.deadline) {
-        parts.push(`<span class="todo-deadline${status === 'overdue' ? ' overdue' : ''}">${todo.deadline}</span>`);
+        parts.push(`<span class="todo-deadline${status === 'overdue' ? ' overdue' : ''}">${escapeHtml(todo.deadline)}</span>`);
       }
       if (status === 'important') {
         parts.push('<span class="todo-badge important">important</span>');
@@ -148,7 +158,7 @@ class TodoPanel {
     el.innerHTML = `
       <div class="todo-check">${checkInner}</div>
       <div>
-        <div class="todo-text">${todo.text}</div>
+        <div class="todo-text">${escapeHtml(todo.text)}</div>
         ${metaHtml}
       </div>
     `;
@@ -165,7 +175,7 @@ class TodoPanel {
     const today = new Date().toISOString().split('T')[0];
     const sections: { label: string; filter: (t: TodoItem) => boolean }[] = [
       { label: 'Important', filter: (t) => !t.is_completed && !!t.is_important },
-      { label: 'Upcoming', filter: (t) => !t.is_completed && !t.is_important && !!t.deadline && t.deadline <= today },
+      { label: 'Due / Overdue', filter: (t) => !t.is_completed && !t.is_important && !!t.deadline && t.deadline <= today },
       { label: 'Open', filter: (t) => !t.is_completed && !t.is_important && (!t.deadline || t.deadline > today) },
       { label: 'Completed today', filter: (t) => !!t.is_completed },
     ];
@@ -345,15 +355,15 @@ const COMMANDS = ['/todo', '/done', '/important', '/by'] as const;
 
 class InputHandler {
   private input: HTMLTextAreaElement;
-  private onSubmit: (value: string) => void;
+  private onSubmit: (value: string) => Promise<void> | void;
 
-  constructor(onSubmit: (value: string) => void) {
+  constructor(onSubmit: (value: string) => Promise<void> | void) {
     this.input = document.getElementById('chatInput') as HTMLTextAreaElement;
     this.onSubmit = onSubmit;
 
     this.input.addEventListener('input', () => this.handleInput());
     this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
-    document.getElementById('sendBtn')!.addEventListener('click', () => this.submit());
+    document.getElementById('sendBtn')!.addEventListener('click', () => { void this.submit(); });
   }
 
   private handleInput(): void {
@@ -366,17 +376,21 @@ class InputHandler {
   private handleKeydown(e: KeyboardEvent): void {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      this.submit();
+      void this.submit();
     }
   }
 
-  private submit(): void {
+  private async submit(): Promise<void> {
     const value = this.input.value.trim();
     if (!value) return;
-    this.onSubmit(value);
     this.input.value = '';
     this.input.style.height = 'auto';
     this.input.classList.remove('is-command');
+    try {
+      await this.onSubmit(value);
+    } catch (err) {
+      console.error('handleInput error:', err);
+    }
   }
 }
 
@@ -458,6 +472,7 @@ class App {
         text = rest.slice(0, byIdx).trim();
         deadline = rest.slice(byIdx + 5).trim();
       }
+      if (!text) return;
       await this.todoPanel.add(text, false, deadline);
       const label = deadline ? `Todo created — due ${deadline}` : 'Todo created';
       this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: text });
