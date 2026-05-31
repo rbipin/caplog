@@ -1,4 +1,4 @@
-import { initDB, query, execute, getSetting } from './db.js';
+import { initDB, query, execute, getSetting, setSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -378,18 +378,53 @@ class InputHandler {
   }
 }
 
+// ─── SettingsModal ────────────────────────────────────────────────────────────
+
+class SettingsModal {
+  private overlay: HTMLElement;
+  private apiKeyInput: HTMLInputElement;
+
+  constructor() {
+    this.overlay = document.getElementById('settingsModal')!;
+    this.apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement;
+
+    document.getElementById('settingsCloseBtn')!.addEventListener('click', () => this.close());
+    this.overlay.addEventListener('click', (e) => { if (e.target === this.overlay) this.close(); });
+    document.getElementById('saveSettingsBtn')!.addEventListener('click', () => { void this.save(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close(); });
+  }
+
+  async open(): Promise<void> {
+    const key = await getSetting('anthropic_api_key');
+    this.apiKeyInput.value = key ?? '';
+    this.overlay.classList.add('visible');
+  }
+
+  close(): void {
+    this.overlay.classList.remove('visible');
+  }
+
+  private async save(): Promise<void> {
+    const key = this.apiKeyInput.value.trim();
+    if (key) await setSetting('anthropic_api_key', key);
+    this.close();
+  }
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 class App {
   private chatArea: ChatArea;
   private todoPanel: TodoPanel;
   private modal: LogModal;
+  private settings: SettingsModal;
   private inputHandler!: InputHandler;
 
   constructor() {
     this.chatArea = new ChatArea();
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
+    this.settings = new SettingsModal();
     new Sidebar();
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
@@ -414,6 +449,7 @@ class App {
 
     document.getElementById('sidebarToggleBtn')!.addEventListener('click', () => this.toggleSidebar());
     document.getElementById('viewLogBtn')!.addEventListener('click', () => this.openLogModal());
+    document.getElementById('settingsBtn')?.addEventListener('click', () => { void this.settings.open(); });
   }
 
   private toggleSidebar(): void {

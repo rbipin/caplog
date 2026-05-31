@@ -19,6 +19,7 @@
         <div class="header-actions">
           <button class="btn-ghost" id="viewLogBtn">⊞ View Log</button>
           <button class="btn-ghost" id="exportBtn">↗ Export .md</button>
+          <button class="btn-ghost" id="settingsBtn">⚙ Settings</button>
         </div>
       </header>
 
@@ -69,6 +70,28 @@
         <div class="modal-footer">
           <button class="btn-ghost">↗ Export .md</button>
           <button class="btn-ghost" id="modalFooterCloseBtn">Close</button>
+        </div>
+      </div>
+    </div>
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title">Settings</div>
+          </div>
+          <button class="modal-close" id="settingsCloseBtn">✕</button>
+        </div>
+        <div class="modal-body settings-body">
+          <label class="settings-label">Anthropic API Key</label>
+          <input
+            type="password"
+            id="apiKeyInput"
+            class="settings-input"
+            placeholder="sk-ant-..."
+          />
+          <p class="settings-hint">Used for AI log formatting. Stored locally, never sent anywhere else.</p>
+          <button id="saveSettingsBtn" class="settings-save-btn">Save</button>
         </div>
       </div>
     </div>
