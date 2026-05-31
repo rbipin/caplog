@@ -1,4 +1,5 @@
-import { initDB, query, execute } from './db.js';
+import { initDB, query, execute, getSetting } from './db.js';
+import { formatLogEntry } from './ai.js';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -356,6 +357,13 @@ class InputHandler {
     }
   }
 
+  setLoading(loading: boolean): void {
+    this.input.disabled = loading;
+    const btn = document.getElementById('sendBtn') as HTMLButtonElement;
+    btn.textContent = loading ? '...' : 'Send';
+    btn.disabled = loading;
+  }
+
   private async submit(): Promise<void> {
     const value = this.input.value.trim();
     if (!value) return;
@@ -376,6 +384,7 @@ class App {
   private chatArea: ChatArea;
   private todoPanel: TodoPanel;
   private modal: LogModal;
+  private inputHandler!: InputHandler;
 
   constructor() {
     this.chatArea = new ChatArea();
@@ -383,7 +392,7 @@ class App {
     this.modal = new LogModal();
     new Sidebar();
     this.initHeader();
-    new InputHandler((value) => this.handleInput(value));
+    this.inputHandler = new InputHandler((value) => this.handleInput(value));
     this.todoPanel.load();
     this.loadTodayEntries();
   }
@@ -470,14 +479,32 @@ class App {
 
     } else {
       const today = new Date().toISOString().split('T')[0];
-      const formattedContent = `<ul><li>${escapeHtml(value)}</li></ul>`;
+      const apiKey = await getSetting('anthropic_api_key');
+
+      let formatted = `<ul><li>${escapeHtml(value)}</li></ul>`;
+
+      if (apiKey) {
+        this.inputHandler.setLoading(true);
+        try {
+          formatted = await formatLogEntry(value, apiKey);
+        } catch (err) {
+          console.error('AI format failed:', err);
+          this.chatArea.append({
+            time, type: 'system', typeLabel: 'System',
+            content: 'AI formatting failed — saved raw text.',
+          });
+        } finally {
+          this.inputHandler.setLoading(false);
+        }
+      }
+
       await execute(
         'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
-        [today, value, formattedContent, new Date().toISOString()]
+        [today, value, formatted, new Date().toISOString()]
       );
       this.chatArea.append({
         time, type: 'log', typeLabel: 'Log entry',
-        content: formattedContent,
+        content: formatted,
         rawInput: value,
       });
     }
