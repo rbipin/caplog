@@ -32,6 +32,14 @@ interface Message {
   rawInput?: string;
 }
 
+interface LogEntry {
+  id: number;
+  date: string;
+  raw_text: string;
+  formatted_text: string;
+  created_at: string;
+}
+
 interface DayEntry {
   date: Date;
   preview: string;
@@ -208,42 +216,19 @@ class ChatArea {
   constructor() {
     this.el = document.getElementById('chatArea')!;
     this.appendDivider('Today');
-    this.loadSeedMessages();
   }
 
-  private loadSeedMessages(): void {
-    this.append({
-      time: '09:14',
-      type: 'log',
-      typeLabel: 'Log entry',
-      content: '<ul><li>Reviewed and approved the authentication PR from Sarah</li><li>Fixed the session timeout bug introduced in v2.1.3</li><li>Attended morning standup — discussed sprint blockers</li></ul>',
-      rawInput: 'reviewed sarahs pr approved it, fixed that session bug from last week, standup was about blockers',
-    });
-    this.append({
-      time: '10:32',
-      type: 'todo-created',
-      typeLabel: 'Todo created',
-      content: 'Write unit tests for the new payment webhook handler',
-    });
-    this.append({
-      time: '10:33',
-      type: 'todo-created',
-      typeLabel: 'Todo created — due Feb 24',
-      content: 'Send updated API documentation to the mobile team',
-    });
-    this.append({
-      time: '14:05',
-      type: 'log',
-      typeLabel: 'Log entry',
-      content: '<ul><li>Completed code review for the dashboard redesign feature branch</li><li>Had a 1:1 with the PM to align on Q2 priorities</li></ul>',
-      rawInput: 'did the code review for dashboard branch, 1on1 with pm about q2 stuff',
-    });
-    this.append({
-      time: '14:06',
-      type: 'system',
-      typeLabel: 'System',
-      content: 'Marked <span style="color:var(--text)">"Update staging environment config"</span> as complete.',
-    });
+  loadEntries(entries: LogEntry[]): void {
+    for (const entry of entries) {
+      const time = new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      this.append({
+        time,
+        type: 'log',
+        typeLabel: 'Log entry',
+        content: entry.formatted_text,
+        rawInput: entry.raw_text !== entry.formatted_text ? entry.raw_text : undefined,
+      });
+    }
   }
 
   appendDivider(label: string): void {
@@ -409,6 +394,16 @@ class App {
     this.initHeader();
     new InputHandler((value) => this.handleInput(value));
     this.todoPanel.load();
+    this.loadTodayEntries();
+  }
+
+  private async loadTodayEntries(): Promise<void> {
+    const today = new Date().toISOString().split('T')[0];
+    const entries = await query<LogEntry>(
+      'SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC',
+      [today]
+    );
+    this.chatArea.loadEntries(entries);
   }
 
   private initHeader(): void {
@@ -493,9 +488,15 @@ class App {
       this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: text });
 
     } else {
+      const today = new Date().toISOString().split('T')[0];
+      const formattedContent = `<ul><li>${escapeHtml(value)}</li></ul>`;
+      await execute(
+        'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
+        [today, value, formattedContent, new Date().toISOString()]
+      );
       this.chatArea.append({
         time, type: 'log', typeLabel: 'Log entry',
-        content: `<ul><li>${value}</li></ul>`,
+        content: formattedContent,
         rawInput: value,
       });
     }
