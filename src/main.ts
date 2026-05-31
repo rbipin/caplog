@@ -1,14 +1,15 @@
-import { initDB } from './db.js';
+import { initDB, query, execute } from './db.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TodoStatus = 'open' | 'important' | 'overdue' | 'completed';
-
 interface TodoItem {
-  id: string;
+  id: number;
   text: string;
-  status: TodoStatus;
-  deadline?: string;
+  is_important: number;
+  is_completed: number;
+  deadline: string | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 type MessageType = 'log' | 'todo-created' | 'system';
@@ -74,63 +75,71 @@ class LogModal {
 class TodoPanel {
   private listEl: HTMLElement;
   private countEl: HTMLElement;
-  private todos: TodoItem[] = [];
 
   constructor() {
     this.listEl = document.getElementById('todoList')!;
     this.countEl = document.getElementById('todoCount')!;
-    this.loadSeedData();
-    this.render();
   }
 
-  private loadSeedData(): void {
-    this.todos = [
-      { id: '1', text: 'Write unit tests for payment webhook handler', status: 'important' },
-      { id: '2', text: 'Send API docs to mobile team', status: 'overdue', deadline: 'Due Feb 24' },
-      { id: '3', text: 'Set up monitoring alerts for prod database', status: 'open', deadline: 'Due Feb 28' },
-      { id: '4', text: 'Research new logging library options', status: 'open' },
-      { id: '5', text: 'Update staging environment config', status: 'completed' },
-    ];
+  async load(): Promise<void> {
+    const todos = await query<TodoItem>(
+      'SELECT * FROM todos ORDER BY is_important DESC, CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline ASC, created_at ASC'
+    );
+    this.render(todos);
   }
 
-  add(text: string, status: TodoStatus = 'open', deadline?: string): void {
-    const id = Date.now().toString();
-    this.todos.push({ id, text, status, deadline });
-    this.render();
+  async add(text: string, isImportant = false, deadline: string | null = null): Promise<void> {
+    await execute(
+      'INSERT INTO todos (text, is_important, deadline, created_at) VALUES (?, ?, ?, ?)',
+      [text, isImportant ? 1 : 0, deadline, new Date().toISOString()]
+    );
+    await this.load();
   }
 
-  complete(id: string): void {
-    const todo = this.todos.find((t) => t.id === id);
-    if (todo && todo.status !== 'completed') {
-      todo.status = 'completed';
-      this.render();
+  async complete(id: number): Promise<void> {
+    await execute(
+      'UPDATE todos SET is_completed = 1, completed_at = ? WHERE id = ?',
+      [new Date().toISOString(), id]
+    );
+    await this.load();
+  }
+
+  async completeByText(text: string): Promise<boolean> {
+    const rows = await query<TodoItem>(
+      'SELECT * FROM todos WHERE is_completed = 0 AND lower(text) LIKE lower(?)',
+      [`%${text}%`]
+    );
+    if (rows.length === 0) return false;
+    await this.complete(rows[0].id);
+    return true;
+  }
+
+  private todoStatus(todo: TodoItem): string {
+    if (todo.is_completed) return 'completed';
+    if (todo.is_important) return 'important';
+    if (todo.deadline) {
+      const today = new Date().toISOString().split('T')[0];
+      if (todo.deadline <= today) return 'overdue';
     }
-  }
-
-  private updateCount(): void {
-    const open = this.todos.filter((t) => t.status !== 'completed').length;
-    const done = this.todos.filter((t) => t.status === 'completed').length;
-    this.countEl.textContent = `${open} open · ${done} done`;
+    return 'open';
   }
 
   private renderItem(todo: TodoItem): HTMLElement {
+    const status = this.todoStatus(todo);
     const el = document.createElement('div');
-    el.className = `todo-item${todo.status !== 'open' ? ` ${todo.status}` : ''}`;
-    el.dataset.id = todo.id;
+    el.className = `todo-item${status !== 'open' ? ` ${status}` : ''}`;
+    el.dataset.id = String(todo.id);
 
-    const checkInner = todo.status === 'completed'
-      ? '<span class="completed-check">✓</span>'
-      : '';
+    const checkInner = status === 'completed' ? '<span class="completed-check">✓</span>' : '';
 
     const metaHtml = (() => {
       const parts: string[] = [];
       if (todo.deadline) {
-        const isOverdue = todo.status === 'overdue';
-        parts.push(`<span class="todo-deadline${isOverdue ? ' overdue' : ''}">${todo.deadline}</span>`);
+        parts.push(`<span class="todo-deadline${status === 'overdue' ? ' overdue' : ''}">${todo.deadline}</span>`);
       }
-      if (todo.status === 'important') {
+      if (status === 'important') {
         parts.push('<span class="todo-badge important">important</span>');
-      } else if (todo.status === 'overdue') {
+      } else if (status === 'overdue') {
         parts.push('<span class="todo-badge overdue">due soon</span>');
       }
       return parts.length ? `<div class="todo-meta">${parts.join('')}</div>` : '';
@@ -144,25 +153,25 @@ class TodoPanel {
       </div>
     `;
 
-    if (todo.status !== 'completed') {
+    if (status !== 'completed') {
       el.addEventListener('click', () => this.complete(todo.id));
     }
-
     return el;
   }
 
-  render(): void {
+  private render(todos: TodoItem[]): void {
     this.listEl.innerHTML = '';
 
+    const today = new Date().toISOString().split('T')[0];
     const sections: { label: string; filter: (t: TodoItem) => boolean }[] = [
-      { label: 'Important', filter: (t) => t.status === 'important' },
-      { label: 'Upcoming', filter: (t) => t.status === 'overdue' },
-      { label: 'Open', filter: (t) => t.status === 'open' },
-      { label: 'Completed today', filter: (t) => t.status === 'completed' },
+      { label: 'Important', filter: (t) => !t.is_completed && !!t.is_important },
+      { label: 'Upcoming', filter: (t) => !t.is_completed && !t.is_important && !!t.deadline && t.deadline <= today },
+      { label: 'Open', filter: (t) => !t.is_completed && !t.is_important && (!t.deadline || t.deadline > today) },
+      { label: 'Completed today', filter: (t) => !!t.is_completed },
     ];
 
     for (const section of sections) {
-      const items = this.todos.filter(section.filter);
+      const items = todos.filter(section.filter);
       if (items.length === 0) continue;
 
       const label = document.createElement('div');
@@ -170,12 +179,14 @@ class TodoPanel {
       label.textContent = section.label;
       this.listEl.appendChild(label);
 
-      for (const todo of items) {
-        this.listEl.appendChild(this.renderItem(todo));
+      for (const item of items) {
+        this.listEl.appendChild(this.renderItem(item));
       }
     }
 
-    this.updateCount();
+    const open = todos.filter((t) => !t.is_completed).length;
+    const done = todos.filter((t) => t.is_completed).length;
+    this.countEl.textContent = `${open} open · ${done} done`;
   }
 }
 
@@ -375,14 +386,15 @@ class App {
   private chatArea: ChatArea;
   private todoPanel: TodoPanel;
   private modal: LogModal;
+
   constructor() {
     this.chatArea = new ChatArea();
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
     new Sidebar();
-
     this.initHeader();
     new InputHandler((value) => this.handleInput(value));
+    this.todoPanel.load();
   }
 
   private initHeader(): void {
@@ -433,24 +445,38 @@ class App {
     ]);
   }
 
-  private handleInput(value: string): void {
+  private async handleInput(value: string): Promise<void> {
     const now = new Date();
     const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
     if (value.startsWith('/todo')) {
-      const text = value.replace('/todo', '').trim();
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo created', content: text });
-      this.todoPanel.add(text);
+      const rest = value.replace('/todo', '').trim();
+      const byIdx = rest.indexOf(' /by ');
+      let text = rest;
+      let deadline: string | null = null;
+      if (byIdx !== -1) {
+        text = rest.slice(0, byIdx).trim();
+        deadline = rest.slice(byIdx + 5).trim();
+      }
+      await this.todoPanel.add(text, false, deadline);
+      const label = deadline ? `Todo created — due ${deadline}` : 'Todo created';
+      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: text });
+
     } else if (value.startsWith('/done')) {
       const task = value.replace('/done', '').trim();
+      const found = await this.todoPanel.completeByText(task);
       this.chatArea.append({
         time, type: 'system', typeLabel: 'System',
-        content: `Marked <span style="color:var(--text)">"${task}"</span> as complete.`,
+        content: found
+          ? `Marked <span style="color:var(--text)">"${task}"</span> as complete.`
+          : `No active todo matching "${task}" found.`,
       });
+
     } else if (value.startsWith('/important')) {
       const text = value.replace('/important', '').trim();
+      await this.todoPanel.add(text, true, null);
       this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: text });
-      this.todoPanel.add(text, 'important');
+
     } else {
       this.chatArea.append({
         time, type: 'log', typeLabel: 'Log entry',
