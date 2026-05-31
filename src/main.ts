@@ -414,35 +414,25 @@ class App {
     btn.classList.toggle('active');
   }
 
-  private openLogModal(): void {
-    this.modal.open([
-      {
-        date: 'Saturday, Feb 21',
-        items: [
-          { text: 'Reviewed and approved the authentication PR from Sarah', time: '09:14' },
-          { text: 'Fixed the session timeout bug introduced in v2.1.3', time: '09:14' },
-          { text: 'Attended morning standup — discussed sprint blockers', time: '09:14' },
-          { text: 'Completed code review for the dashboard redesign feature branch', time: '14:05' },
-          { text: 'Had a 1:1 with the PM to align on Q2 priorities', time: '14:05' },
-        ],
-      },
-      {
-        date: 'Friday, Feb 20',
-        items: [
-          { text: 'Deployed v2.1 to staging environment after final QA sign-off', time: '11:20' },
-          { text: 'Wrote integration tests for the payment module checkout flow', time: '15:45' },
-        ],
-      },
-      {
-        date: 'Thursday, Feb 19',
-        items: [
-          { text: 'Led architecture review session with the backend team', time: '10:00' },
-          { text: 'Updated API documentation with new endpoint schemas', time: '13:30' },
-          { text: 'Reviewed and merged two PRs from the frontend team', time: '16:00' },
-          { text: 'Triaged open bugs from the weekly bug bash session', time: '17:10' },
-        ],
-      },
-    ]);
+  private async openLogModal(): Promise<void> {
+    const entries = await query<LogEntry>(
+      'SELECT * FROM log_entries ORDER BY date DESC, created_at ASC'
+    );
+
+    const grouped = new Map<string, { text: string; time: string }[]>();
+    for (const e of entries) {
+      const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      if (!grouped.has(e.date)) grouped.set(e.date, []);
+      grouped.get(e.date)!.push({ text: e.formatted_text.replace(/<[^>]+>/g, '').trim(), time });
+    }
+
+    const modalData = Array.from(grouped.entries()).map(([date, items]) => {
+      const d = new Date(date + 'T00:00:00');
+      const label = d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      return { date: label, items };
+    });
+
+    this.modal.open(modalData);
   }
 
   private async handleInput(value: string): Promise<void> {
