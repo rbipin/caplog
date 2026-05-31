@@ -40,11 +40,11 @@ interface LogEntry {
   created_at: string;
 }
 
-interface DayEntry {
-  date: Date;
+interface DayStats {
+  date: string;
+  log_count: number;
+  todo_done_count: number;
   preview: string;
-  logCount: number;
-  todoDoneCount: number;
 }
 
 // ─── LogModal ─────────────────────────────────────────────────────────────────
@@ -273,44 +273,37 @@ class Sidebar {
   constructor() {
     this.monthLabel = document.getElementById('sidebarMonthLabel')!;
     this.dayList = document.getElementById('dayList')!;
-    this.render();
-  }
-
-  private render(): void {
     const now = new Date();
     this.monthLabel.textContent = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-
-    const days = (offset: number): DayEntry => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - offset);
-      return { date: d, preview: '', logCount: 0, todoDoneCount: 0 };
-    };
-
-    const seedEntries: DayEntry[] = [
-      { date: days(0).date, preview: 'Reviewed PR, fixed auth bug, standup call', logCount: 3, todoDoneCount: 2 },
-      { date: days(1).date, preview: 'Deployed v2.1 to staging, wrote tests for payment module', logCount: 2, todoDoneCount: 0 },
-      { date: days(2).date, preview: 'Architecture review with team, updated API docs', logCount: 4, todoDoneCount: 1 },
-      { date: days(3).date, preview: 'Debugging session, customer call, updated roadmap', logCount: 2, todoDoneCount: 0 },
-      { date: days(4).date, preview: 'Sprint planning, ticket grooming, fixed CI pipeline', logCount: 3, todoDoneCount: 0 },
-    ];
-
-    seedEntries.forEach((entry, index) => {
-      this.dayList.appendChild(this.renderEntry(entry, index === 0));
-    });
+    this.load();
   }
 
-  private renderEntry(entry: DayEntry, active: boolean): HTMLElement {
+  private async load(): Promise<void> {
+    const stats = await query<DayStats>(`
+      SELECT
+        l.date,
+        COUNT(l.id) AS log_count,
+        (SELECT COUNT(*) FROM todos t WHERE t.completed_at LIKE l.date || '%') AS todo_done_count,
+        (SELECT raw_text FROM log_entries WHERE date = l.date ORDER BY created_at ASC LIMIT 1) AS preview
+      FROM log_entries l
+      GROUP BY l.date
+      ORDER BY l.date DESC
+      LIMIT 30
+    `);
+
+    this.dayList.innerHTML = '';
+    stats.forEach((s, i) => this.dayList.appendChild(this.renderEntry(s, i === 0)));
+  }
+
+  private renderEntry(s: DayStats, active: boolean): HTMLElement {
+    const d = new Date(s.date + 'T00:00:00');
     const dowNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const dow = dowNames[entry.date.getDay()];
-    const day = entry.date.getDate();
+    const dow = dowNames[d.getDay()];
+    const day = d.getDate();
 
     const metaTags: string[] = [];
-    if (entry.logCount > 0) {
-      metaTags.push(`<span class="tag tag-log">${entry.logCount} entries</span>`);
-    }
-    if (entry.todoDoneCount > 0) {
-      metaTags.push(`<span class="tag tag-todo">${entry.todoDoneCount} done</span>`);
-    }
+    if (s.log_count > 0) metaTags.push(`<span class="tag tag-log">${s.log_count} entries</span>`);
+    if (s.todo_done_count > 0) metaTags.push(`<span class="tag tag-todo">${s.todo_done_count} done</span>`);
 
     const el = document.createElement('div');
     el.className = `day-entry${active ? ' active' : ''}`;
@@ -320,16 +313,14 @@ class Sidebar {
         <div class="day-entry-num">${day}</div>
       </div>
       <div>
-        <div class="day-entry-preview">${entry.preview}</div>
+        <div class="day-entry-preview">${escapeHtml(s.preview ?? '')}</div>
         <div class="day-entry-meta">${metaTags.join('')}</div>
       </div>
     `;
-
     el.addEventListener('click', () => {
       document.querySelectorAll('.day-entry').forEach((e) => e.classList.remove('active'));
       el.classList.add('active');
     });
-
     return el;
   }
 }
