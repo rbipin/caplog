@@ -8,6 +8,8 @@
     "opener:default",
     "sql:allow-execute",
     "sql:allow-select",
-    "sql:allow-load"
+    "sql:allow-load",
+    "fs:allow-write-text-file",
+    "dialog:allow-save"
   ]
 }

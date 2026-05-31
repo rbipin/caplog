@@ -1,5 +1,6 @@
 import { initDB, query, execute, getSetting, setSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
+import { exportMarkdown } from './export.js';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -450,6 +451,7 @@ class App {
     document.getElementById('sidebarToggleBtn')!.addEventListener('click', () => this.toggleSidebar());
     document.getElementById('viewLogBtn')!.addEventListener('click', () => this.openLogModal());
     document.getElementById('settingsBtn')!.addEventListener('click', () => { void this.settings.open(); });
+    document.getElementById('exportBtn')!.addEventListener('click', () => { void exportMarkdown(); });
   }
 
   private toggleSidebar(): void {
