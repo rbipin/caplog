@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DayLog</title>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <div class="app" id="app">
+
+      <!-- Header -->
+      <header class="header">
+        <button class="sidebar-toggle" id="sidebarToggleBtn" title="Toggle log history">☰</button>
+        <div class="header-logo">DayLog</div>
+        <div class="header-date" id="headerDate"></div>
+        <div class="header-actions">
+          <button class="btn-ghost" id="viewLogBtn">⊞ View Log</button>
+          <button class="btn-ghost" id="exportBtn">↗ Export .md</button>
+        </div>
+      </header>
+
+      <!-- Left sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-section-title" id="sidebarMonthLabel"></div>
+        <div id="dayList"></div>
+      </aside>
+
+      <!-- Main chat -->
+      <main class="main">
+        <div class="chat-area" id="chatArea"></div>
+
+        <!-- Input area -->
+        <div class="input-area">
+          <div class="input-hint">
+            Just type to log · <span>/todo</span> new task · <span>/done</span> complete · <span>/important</span> prioritize · <span>/by [date]</span> set deadline
+          </div>
+          <div class="input-row">
+            <textarea class="chat-input" placeholder="What did you work on today..." rows="1" id="chatInput"></textarea>
+            <button class="send-btn" id="sendBtn">↑</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Todo panel -->
+      <aside class="todo-panel">
+        <div class="todo-header">
+          <div class="todo-title">Active Todos</div>
+          <div class="todo-count" id="todoCount"></div>
+        </div>
+        <div class="todo-list" id="todoList"></div>
+      </aside>
+
+    </div>
+
+    <!-- Log View Modal -->
+    <div class="modal-overlay" id="logModal">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title">DayLog</div>
+            <div class="modal-subtitle" id="modalSubtitle"></div>
+          </div>
+          <button class="modal-close" id="modalCloseBtn">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-footer">
+          <button class="btn-ghost">↗ Export .md</button>
+          <button class="btn-ghost" id="modalFooterCloseBtn">Close</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DayLog</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface-2: #1e1e1e;
+    --border: #2a2a2a;
+    --border-hover: #3a3a3a;
+    --text: #e8e4dc;
+    --text-muted: #6b6660;
+    --text-dim: #3d3a37;
+    --accent: #c8a96e;
+    --accent-dim: #c8a96e22;
+    --red: #e05c5c;
+    --red-dim: #e05c5c18;
+    --green: #6ec89a;
+    --green-dim: #6ec89a18;
+    --cmd: #6eb5c8;
+    --cmd-dim: #6eb5c818;
+    --font-serif: 'Instrument Serif', Georgia, serif;
+    --font-mono: 'DM Mono', 'Courier New', monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    overflow: hidden;
+  }
+
+  /* Layout */
+  .app {
+    display: grid;
+    grid-template-columns: 260px 1fr 300px;
+    grid-template-rows: 48px 1fr;
+    height: 100vh;
+    gap: 0;
+    transition: grid-template-columns 0.25s ease;
+  }
+
+  .app.sidebar-collapsed {
+    grid-template-columns: 0px 1fr 300px;
+  }
+
+  /* Header */
+  .header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    gap: 16px;
+  }
+
+  .header-logo {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    font-style: italic;
+  }
+
+  .header-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-ghost.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* Sidebar toggle */
+  .sidebar-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .sidebar-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Log modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .modal-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 640px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(8px);
+    transition: transform 0.2s ease;
+    overflow: hidden;
+  }
+
+  .modal-overlay.visible .modal {
+    transform: translateY(0);
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .modal-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--accent);
+  }
+
+  .modal-subtitle {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .modal-close {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .modal-close:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .modal-body {
+    overflow-y: auto;
+    padding: 20px;
+    flex: 1;
+  }
+
+  .log-view-entry {
+    margin-bottom: 24px;
+  }
+
+  .log-view-date {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .log-view-item {
+    padding: 4px 0;
+    padding-left: 14px;
+    position: relative;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .log-view-item::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--text-dim);
+  }
+
+  .log-view-time {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-left: 6px;
+  }
+
+  .modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 0;
+    transition: all 0.25s ease;
+    min-width: 0;
+  }
+
+  .app.sidebar-collapsed .sidebar {
+    padding: 0;
+    border-right: none;
+    overflow: hidden;
+  }
+
+  .sidebar-section-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 16px 8px;
+  }
+
+  .day-entry {
+    padding: 10px 16px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.12s;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .day-entry:hover {
+    background: var(--surface-2);
+    border-left-color: var(--border-hover);
+  }
+
+  .day-entry.active {
+    background: var(--surface-2);
+    border-left-color: var(--accent);
+  }
+
+  .day-entry-date {
+    font-size: 10px;
+    color: var(--text-muted);
+    min-width: 28px;
+    text-align: center;
+    padding-top: 1px;
+  }
+
+  .day-entry-num {
+    font-size: 18px;
+    font-family: var(--font-serif);
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .day-entry.active .day-entry-num {
+    color: var(--accent);
+  }
+
+  .day-entry-preview {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .day-entry-meta {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .tag {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+
+  .tag-log { background: var(--accent-dim); color: var(--accent); }
+  .tag-todo { background: var(--green-dim); color: var(--green); }
+
+  /* Main chat area */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Day divider */
+  .day-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0 12px;
+  }
+
+  .day-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .day-divider-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  /* Messages */
+  .msg {
+    display: flex;
+    gap: 12px;
+    padding: 6px 0;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-time {
+    font-size: 10px;
+    color: var(--text-dim);
+    min-width: 40px;
+    padding-top: 3px;
+    text-align: right;
+  }
+
+  .msg-body {
+    flex: 1;
+  }
+
+  .msg-type {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .msg-type.log { color: var(--accent); }
+  .msg-type.todo-created { color: var(--green); }
+  .msg-type.system { color: var(--text-dim); }
+
+  .msg-content {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .msg-content ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .msg-content ul li {
+    padding: 2px 0;
+    padding-left: 14px;
+    position: relative;
+    color: var(--text);
+  }
+
+  .msg-content ul li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--text-dim);
+  }
+
+  .msg-raw {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border-radius: 4px;
+    border-left: 2px solid var(--border);
+    font-style: italic;
+  }
+
+  .msg-raw-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    font-style: normal;
+  }
+
+  /* Input area */
+  .input-area {
+    border-top: 1px solid var(--border);
+    padding: 16px 32px 20px;
+    background: var(--bg);
+  }
+
+  .input-hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .input-hint span {
+    color: var(--text-muted);
+    background: var(--surface);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin: 0 2px;
+    font-size: 10px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .chat-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    resize: none;
+    min-height: 42px;
+    max-height: 120px;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .chat-input:focus {
+    border-color: var(--accent);
+  }
+
+  .chat-input.is-command {
+    border-color: var(--cmd);
+    color: var(--cmd);
+    caret-color: var(--text);
+  }
+
+  .chat-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .send-btn:hover { opacity: 0.85; }
+
+  /* Todo panel */
+  .todo-panel {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .todo-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .todo-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .todo-count {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .todo-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .todo-section-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 16px 4px;
+  }
+
+  .todo-item {
+    padding: 8px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-left: 2px solid transparent;
+  }
+
+  .todo-item:hover {
+    background: var(--surface-2);
+  }
+
+  .todo-item.important {
+    border-left-color: var(--accent);
+  }
+
+  .todo-item.overdue {
+    border-left-color: var(--red);
+  }
+
+  .todo-check {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--border-hover);
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .todo-item:hover .todo-check {
+    border-color: var(--green);
+  }
+
+  .todo-item.important .todo-check {
+    border-color: var(--accent);
+  }
+
+  .todo-item.overdue .todo-check {
+    border-color: var(--red);
+  }
+
+  .todo-text {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .todo-item.completed .todo-text {
+    color: var(--text-dim);
+    text-decoration: line-through;
+  }
+
+  .todo-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .todo-deadline {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .todo-deadline.overdue {
+    color: var(--red);
+  }
+
+  .todo-badge {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+
+  .todo-badge.important { background: var(--accent-dim); color: var(--accent); }
+  .todo-badge.overdue { background: var(--red-dim); color: var(--red); }
+
+  .completed-check {
+    color: var(--green);
+    font-size: 10px;
+  }
+
+  .todo-item.completed .todo-check {
+    border-color: var(--green);
+    background: var(--green-dim);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <button class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggleBtn" title="Toggle log history">☰</button>
+    <div class="header-logo">DayLog</div>
+    <div class="header-date">Saturday, 21 Feb 2026</div>
+    <div class="header-actions">
+      <button class="btn-ghost" onclick="openLogModal()">⊞ View Log</button>
+      <button class="btn-ghost">↗ Export .md</button>
+    </div>
+  </header>
+
+  <!-- Left sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section-title">February 2026</div>
+
+    <div class="day-entry active">
+      <div class="day-entry-date">
+        <div style="font-size:9px;color:var(--text-dim)">SAT</div>
+        <div class="day-entry-num">21</div>
+      </div>
+      <div>
+        <div class="day-entry-preview">Reviewed PR, fixed auth bug, standup call</div>
+        <div class="day-entry-meta">
+          <span class="tag tag-log">3 entries</span>
+          <span class="tag tag-todo">2 done</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="day-entry">
+      <div class="day-entry-date">
+        <div style="font-size:9px;color:var(--text-dim)">FRI</div>
+        <div class="day-entry-num">20</div>
+      </div>
+      <div>
+        <div class="day-entry-preview">Deployed v2.1 to staging, wrote tests for payment module</div>
+        <div class="day-entry-meta">
+          <span class="tag tag-log">2 entries</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="day-entry">
+      <div class="day-entry-date">
+        <div style="font-size:9px;color:var(--text-dim)">THU</div>
+        <div class="day-entry-num">19</div>
+      </div>
+      <div>
+        <div class="day-entry-preview">Architecture review with team, updated API docs</div>
+        <div class="day-entry-meta">
+          <span class="tag tag-log">4 entries</span>
+          <span class="tag tag-todo">1 done</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="day-entry">
+      <div class="day-entry-date">
+        <div style="font-size:9px;color:var(--text-dim)">WED</div>
+        <div class="day-entry-num">18</div>
+      </div>
+      <div>
+        <div class="day-entry-preview">Debugging session, customer call, updated roadmap</div>
+        <div class="day-entry-meta">
+          <span class="tag tag-log">2 entries</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="day-entry">
+      <div class="day-entry-date">
+        <div style="font-size:9px;color:var(--text-dim)">TUE</div>
+        <div class="day-entry-num">17</div>
+      </div>
+      <div>
+        <div class="day-entry-preview">Sprint planning, ticket grooming, fixed CI pipeline</div>
+        <div class="day-entry-meta">
+          <span class="tag tag-log">3 entries</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main chat -->
+  <main class="main">
+    <div class="chat-area" id="chatArea">
+
+      <div class="day-divider">
+        <div class="day-divider-line"></div>
+        <div class="day-divider-label">Today — Feb 21</div>
+        <div class="day-divider-line"></div>
+      </div>
+
+      <!-- Log entry -->
+      <div class="msg">
+        <div class="msg-time">09:14</div>
+        <div class="msg-body">
+          <div class="msg-type log">Log entry</div>
+          <div class="msg-content">
+            <ul>
+              <li>Reviewed and approved the authentication PR from Sarah</li>
+              <li>Fixed the session timeout bug introduced in v2.1.3</li>
+              <li>Attended morning standup — discussed sprint blockers</li>
+            </ul>
+          </div>
+          <div class="msg-raw">
+            <div class="msg-raw-label">Original input</div>
+            reviewed sarahs pr approved it, fixed that session bug from last week, standup was about blockers
+          </div>
+        </div>
+      </div>
+
+      <!-- Todo created -->
+      <div class="msg">
+        <div class="msg-time">10:32</div>
+        <div class="msg-body">
+          <div class="msg-type todo-created">Todo created</div>
+          <div class="msg-content">
+            Write unit tests for the new payment webhook handler
+          </div>
+        </div>
+      </div>
+
+      <!-- Todo created with deadline -->
+      <div class="msg">
+        <div class="msg-time">10:33</div>
+        <div class="msg-body">
+          <div class="msg-type todo-created">Todo created — due Feb 24</div>
+          <div class="msg-content">
+            Send updated API documentation to the mobile team
+          </div>
+        </div>
+      </div>
+
+      <!-- Log entry 2 -->
+      <div class="msg">
+        <div class="msg-time">14:05</div>
+        <div class="msg-body">
+          <div class="msg-type log">Log entry</div>
+          <div class="msg-content">
+            <ul>
+              <li>Completed code review for the dashboard redesign feature branch</li>
+              <li>Had a 1:1 with the PM to align on Q2 priorities</li>
+            </ul>
+          </div>
+          <div class="msg-raw">
+            <div class="msg-raw-label">Original input</div>
+            did the code review for dashboard branch, 1on1 with pm about q2 stuff
+          </div>
+        </div>
+      </div>
+
+      <!-- System msg -->
+      <div class="msg">
+        <div class="msg-time">14:06</div>
+        <div class="msg-body">
+          <div class="msg-type system">System</div>
+          <div class="msg-content" style="color: var(--text-muted)">
+            Marked <span style="color:var(--text)">"Update staging environment config"</span> as complete.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input area -->
+    <div class="input-area">
+      <div class="input-hint">
+        Just type to log · <span>/todo</span> new task · <span>/done</span> complete · <span>/important</span> prioritize · <span>/by [date]</span> set deadline
+      </div>
+      <div class="input-row">
+        <textarea class="chat-input" placeholder="What did you work on today..." rows="1" id="chatInput"></textarea>
+        <button class="send-btn" onclick="handleSend()">↑</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Todo panel -->
+  <aside class="todo-panel">
+    <div class="todo-header">
+      <div class="todo-title">Active Todos</div>
+      <div class="todo-count">4 open · 1 done</div>
+    </div>
+    <div class="todo-list">
+
+      <div class="todo-section-label">Important</div>
+
+      <div class="todo-item important" onclick="toggleTodo(this)">
+        <div class="todo-check"></div>
+        <div>
+          <div class="todo-text">Write unit tests for payment webhook handler</div>
+          <div class="todo-meta">
+            <span class="todo-badge important">important</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="todo-section-label">Upcoming</div>
+
+      <div class="todo-item overdue" onclick="toggleTodo(this)">
+        <div class="todo-check"></div>
+        <div>
+          <div class="todo-text">Send API docs to mobile team</div>
+          <div class="todo-meta">
+            <span class="todo-deadline overdue">Due Feb 24</span>
+            <span class="todo-badge overdue">due soon</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="todo-item" onclick="toggleTodo(this)">
+        <div class="todo-check"></div>
+        <div>
+          <div class="todo-text">Set up monitoring alerts for prod database</div>
+          <div class="todo-meta">
+            <span class="todo-deadline">Due Feb 28</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="todo-section-label">Open</div>
+
+      <div class="todo-item" onclick="toggleTodo(this)">
+        <div class="todo-check"></div>
+        <div>
+          <div class="todo-text">Research new logging library options</div>
+        </div>
+      </div>
+
+      <div class="todo-section-label">Completed today</div>
+
+      <div class="todo-item completed">
+        <div class="todo-check"><span class="completed-check">✓</span></div>
+        <div>
+          <div class="todo-text">Update staging environment config</div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+<!-- Log View Modal -->
+<div class="modal-overlay" id="logModal" onclick="handleModalOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">DayLog</div>
+        <div class="modal-subtitle">Log entries — Feb 2026</div>
+      </div>
+      <button class="modal-close" onclick="closeLogModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="log-view-entry">
+        <div class="log-view-date">Saturday, Feb 21</div>
+        <div class="log-view-item">Reviewed and approved the authentication PR from Sarah <span class="log-view-time">09:14</span></div>
+        <div class="log-view-item">Fixed the session timeout bug introduced in v2.1.3 <span class="log-view-time">09:14</span></div>
+        <div class="log-view-item">Attended morning standup — discussed sprint blockers <span class="log-view-time">09:14</span></div>
+        <div class="log-view-item">Completed code review for the dashboard redesign feature branch <span class="log-view-time">14:05</span></div>
+        <div class="log-view-item">Had a 1:1 with the PM to align on Q2 priorities <span class="log-view-time">14:05</span></div>
+      </div>
+      <div class="log-view-entry">
+        <div class="log-view-date">Friday, Feb 20</div>
+        <div class="log-view-item">Deployed v2.1 to staging environment after final QA sign-off <span class="log-view-time">11:20</span></div>
+        <div class="log-view-item">Wrote integration tests for the payment module checkout flow <span class="log-view-time">15:45</span></div>
+      </div>
+      <div class="log-view-entry">
+        <div class="log-view-date">Thursday, Feb 19</div>
+        <div class="log-view-item">Led architecture review session with the backend team <span class="log-view-time">10:00</span></div>
+        <div class="log-view-item">Updated API documentation with new endpoint schemas <span class="log-view-time">13:30</span></div>
+        <div class="log-view-item">Reviewed and merged two PRs from the frontend team <span class="log-view-time">16:00</span></div>
+        <div class="log-view-item">Triaged open bugs from the weekly bug bash session <span class="log-view-time">17:10</span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost">↗ Export .md</button>
+      <button class="btn-ghost" onclick="closeLogModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleSidebar() {
+    const app = document.querySelector('.app');
+    const btn = document.getElementById('sidebarToggleBtn');
+    app.classList.toggle('sidebar-collapsed');
+    btn.classList.toggle('active');
+  }
+
+  function openLogModal() {
+    document.getElementById('logModal').classList.add('visible');
+  }
+
+  function closeLogModal() {
+    document.getElementById('logModal').classList.remove('visible');
+  }
+
+  function handleModalOverlayClick(e) {
+    if (e.target === document.getElementById('logModal')) closeLogModal();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLogModal();
+  });
+
+  // Auto-resize textarea
+  const input = document.getElementById('chatInput');
+  const commands = ['/todo', '/done', '/important', '/by'];
+
+  input.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    // Highlight if starts with a known command
+    const isCmd = commands.some(cmd => this.value.trimStart().startsWith(cmd));
+    this.classList.toggle('is-command', isCmd);
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+
+  function handleSend() {
+    const val = input.value.trim();
+    if (!val) return;
+
+    const chatArea = document.getElementById('chatArea');
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+    let typeLabel = 'Log entry';
+    let typeClass = 'log';
+    let content = '';
+
+    if (val.startsWith('/todo')) {
+      typeLabel = 'Todo created';
+      typeClass = 'todo-created';
+      content = val.replace('/todo', '').trim();
+      // Add to todo panel
+      addTodoItem(content);
+    } else if (val.startsWith('/done')) {
+      typeLabel = 'System';
+      typeClass = 'system';
+      const task = val.replace('/done', '').trim();
+      content = `Marked <span style="color:var(--text)">"${task}"</span> as complete.`;
+    } else if (val.startsWith('/important')) {
+      typeLabel = 'Todo prioritized';
+      typeClass = 'todo-created';
+      content = val.replace('/important', '').trim();
+    } else {
+      // It's a log entry - simulate AI formatting
+      content = `<ul><li>${val}</li></ul>`;
+    }
+
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.innerHTML = `
+      <div class="msg-time">${time}</div>
+      <div class="msg-body">
+        <div class="msg-type ${typeClass}">${typeLabel}</div>
+        <div class="msg-content">${content}</div>
+      </div>
+    `;
+    chatArea.appendChild(msg);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    input.value = '';
+    input.style.height = 'auto';
+    input.classList.remove('is-command');
+  }
+
+  function addTodoItem(text) {
+    const list = document.querySelector('.todo-list');
+    const openSection = [...list.querySelectorAll('.todo-section-label')].find(el => el.textContent === 'Open');
+    const item = document.createElement('div');
+    item.className = 'todo-item';
+    item.setAttribute('onclick', 'toggleTodo(this)');
+    item.innerHTML = `
+      <div class="todo-check"></div>
+      <div><div class="todo-text">${text}</div></div>
+    `;
+    if (openSection && openSection.nextSibling) {
+      list.insertBefore(item, openSection.nextSibling);
+    } else {
+      list.appendChild(item);
+    }
+  }
+
+  function toggleTodo(el) {
+    if (el.classList.contains('completed')) return;
+    el.classList.add('completed');
+    el.querySelector('.todo-check').innerHTML = '<span class="completed-check">✓</span>';
+
+    // Move to completed section
+    const list = document.querySelector('.todo-list');
+    const completedSection = [...list.querySelectorAll('.todo-section-label')].find(e => e.textContent.includes('Completed'));
+    if (completedSection && completedSection.nextSibling) {
+      list.insertBefore(el, completedSection.nextSibling);
+    }
+  }
+</script>
+</body>
+</html>
