@@ -738,3 +738,25 @@ html, body {
 .settings-save-btn:hover {
   opacity: 0.85;
 }
+
+.todo-delete-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+
+.todo-item:hover .todo-delete-btn {
+  display: block;
+}
+
+.todo-delete-btn:hover {
+  color: var(--red);
+}

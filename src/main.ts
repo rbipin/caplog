@@ -141,6 +141,11 @@ class TodoPanel {
     return true;
   }
 
+  async delete(id: number): Promise<void> {
+    await execute('DELETE FROM todos WHERE id = ?', [id]);
+    await this.load();
+  }
+
   private todoStatus(todo: TodoItem): string {
     if (todo.is_completed) return 'completed';
     if (todo.is_important) return 'important';
@@ -174,15 +179,25 @@ class TodoPanel {
 
     el.innerHTML = `
       <div class="todo-check">${checkInner}</div>
-      <div>
+      <div style="flex:1">
         <div class="todo-text">${escapeHtml(todo.text)}</div>
         ${metaHtml}
       </div>
+      <button class="todo-delete-btn" title="Delete">✕</button>
     `;
 
     if (status !== 'completed') {
-      el.addEventListener('click', () => this.complete(todo.id));
+      el.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('.todo-delete-btn')) return;
+        this.complete(todo.id);
+      });
     }
+
+    el.querySelector('.todo-delete-btn')!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.delete(todo.id);
+    });
+
     return el;
   }
 
