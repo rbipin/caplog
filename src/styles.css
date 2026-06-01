@@ -817,3 +817,21 @@ html, body {
 .msg-content[data-editable="true"]:hover {
   opacity: 0.75;
 }
+
+.settings-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
