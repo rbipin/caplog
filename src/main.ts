@@ -12,6 +12,12 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function stripHtml(html: string): string {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent ?? tmp.innerText ?? '';
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TodoItem {
@@ -125,9 +131,10 @@ class TodoPanel {
   }
 
   async completeByText(text: string): Promise<boolean> {
+    const escaped = text.replace(/[%_\\]/g, '\\$&');
     const rows = await query<TodoItem>(
-      'SELECT * FROM todos WHERE is_completed = 0 AND lower(text) LIKE lower(?)',
-      [`%${text}%`]
+      "SELECT * FROM todos WHERE is_completed = 0 AND lower(text) LIKE lower(?) ESCAPE '\\'",
+      [`%${escaped}%`]
     );
     if (rows.length === 0) return false;
     await this.complete(rows[0].id);
@@ -248,7 +255,7 @@ class ChatArea {
 
   append(msg: Message): void {
     const rawHtml = msg.rawInput
-      ? `<div class="msg-raw"><div class="msg-raw-label">Original input</div>${msg.rawInput}</div>`
+      ? `<div class="msg-raw"><div class="msg-raw-label">Original input</div>${escapeHtml(msg.rawInput)}</div>`
       : '';
 
     const el = document.createElement('div');
@@ -278,6 +285,10 @@ class Sidebar {
     const now = new Date();
     this.monthLabel.textContent = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
     this.load();
+  }
+
+  refresh(): void {
+    void this.load();
   }
 
   private async load(): Promise<void> {
@@ -407,7 +418,11 @@ class SettingsModal {
 
   private async save(): Promise<void> {
     const key = this.apiKeyInput.value.trim();
-    await setSetting('anthropic_api_key', key);
+    if (key) {
+      await setSetting('anthropic_api_key', key);
+    } else {
+      await execute('DELETE FROM settings WHERE key = ?', ['anthropic_api_key']);
+    }
     this.close();
   }
 }
@@ -419,6 +434,7 @@ class App {
   private todoPanel: TodoPanel;
   private modal: LogModal;
   private settings: SettingsModal;
+  private sidebar: Sidebar;
   private inputHandler!: InputHandler;
 
   constructor() {
@@ -426,11 +442,22 @@ class App {
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
     this.settings = new SettingsModal();
-    new Sidebar();
+    this.sidebar = new Sidebar();
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
-    this.todoPanel.load();
-    this.loadTodayEntries();
+    void this.init();
+  }
+
+  private async init(): Promise<void> {
+    try {
+      await Promise.all([this.todoPanel.load(), this.loadTodayEntries()]);
+    } catch (err) {
+      console.error('Startup load failed:', err);
+      this.chatArea.append({
+        time: '--:--', type: 'system', typeLabel: 'System',
+        content: 'Failed to load data. Please restart the app.',
+      });
+    }
   }
 
   private async loadTodayEntries(): Promise<void> {
@@ -470,7 +497,7 @@ class App {
     for (const e of entries) {
       const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       if (!grouped.has(e.date)) grouped.set(e.date, []);
-      grouped.get(e.date)!.push({ text: e.formatted_text.replace(/<[^>]+>/g, '').trim(), time });
+      grouped.get(e.date)!.push({ text: stripHtml(e.formatted_text), time });
     }
 
     const modalData = Array.from(grouped.entries()).map(([date, items]) => {
@@ -497,23 +524,26 @@ class App {
       }
       if (!text) return;
       await this.todoPanel.add(text, false, deadline);
+      void this.sidebar.refresh();
       const label = deadline ? `Todo created — due ${deadline}` : 'Todo created';
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: text });
+      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(text) });
 
     } else if (value.startsWith('/done')) {
       const task = value.replace('/done', '').trim();
       const found = await this.todoPanel.completeByText(task);
+      void this.sidebar.refresh();
       this.chatArea.append({
         time, type: 'system', typeLabel: 'System',
         content: found
-          ? `Marked <span style="color:var(--text)">"${task}"</span> as complete.`
-          : `No active todo matching "${task}" found.`,
+          ? `Marked <span style="color:var(--text)">"${escapeHtml(task)}"</span> as complete.`
+          : `No active todo matching "${escapeHtml(task)}" found.`,
       });
 
     } else if (value.startsWith('/important')) {
       const text = value.replace('/important', '').trim();
       await this.todoPanel.add(text, true, null);
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: text });
+      void this.sidebar.refresh();
+      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(text) });
 
     } else {
       const today = new Date().toISOString().split('T')[0];
@@ -540,6 +570,7 @@ class App {
         'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
         [today, value, formatted, new Date().toISOString()]
       );
+      void this.sidebar.refresh();
       this.chatArea.append({
         time, type: 'log', typeLabel: 'Log entry',
         content: formatted,

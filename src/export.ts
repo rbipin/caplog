@@ -16,7 +16,9 @@ export async function exportMarkdown(): Promise<void> {
   const grouped = new Map<string, string[]>();
   for (const e of entries) {
     if (!grouped.has(e.date)) grouped.set(e.date, []);
-    const text = e.formatted_text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const tmp = document.createElement('div');
+    tmp.innerHTML = e.formatted_text;
+    const text = (tmp.textContent ?? tmp.innerText ?? '').replace(/\s+/g, ' ').trim();
     grouped.get(e.date)!.push(`- ${text}`);
   }
 
