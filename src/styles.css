@@ -819,7 +819,7 @@ html, body {
 }
 
 .settings-select {
-  background: var(--surface);
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 4px;

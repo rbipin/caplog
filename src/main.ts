@@ -496,6 +496,7 @@ class SettingsModal {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.overlay.classList.contains('visible')) this.close(); });
 
     this.providerSelect.addEventListener('change', () => this.syncBaseUrlVisibility());
+    this.syncBaseUrlVisibility();
   }
 
   private syncBaseUrlVisibility(): void {
