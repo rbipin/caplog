@@ -1,6 +1,7 @@
 import { initDB, query, execute, getSetting, setSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
+import { getAdapter } from './llm/factory.js';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -10,6 +11,12 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function stripHtml(html: string): string {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent ?? tmp.innerText ?? '';
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +39,7 @@ interface Message {
   typeLabel: string;
   content: string;
   rawInput?: string;
+  entryId?: number;   // only set for 'log' type messages loaded from DB
 }
 
 interface LogEntry {
@@ -125,13 +133,19 @@ class TodoPanel {
   }
 
   async completeByText(text: string): Promise<boolean> {
+    const escaped = text.replace(/[%_\\]/g, '\\$&');
     const rows = await query<TodoItem>(
-      'SELECT * FROM todos WHERE is_completed = 0 AND lower(text) LIKE lower(?)',
-      [`%${text}%`]
+      "SELECT * FROM todos WHERE is_completed = 0 AND lower(text) LIKE lower(?) ESCAPE '\\'",
+      [`%${escaped}%`]
     );
     if (rows.length === 0) return false;
     await this.complete(rows[0].id);
     return true;
+  }
+
+  async delete(id: number): Promise<void> {
+    await execute('DELETE FROM todos WHERE id = ?', [id]);
+    await this.load();
   }
 
   private todoStatus(todo: TodoItem): string {
@@ -167,15 +181,25 @@ class TodoPanel {
 
     el.innerHTML = `
       <div class="todo-check">${checkInner}</div>
-      <div>
+      <div style="flex:1">
         <div class="todo-text">${escapeHtml(todo.text)}</div>
         ${metaHtml}
       </div>
+      <button class="todo-delete-btn" title="Delete">✕</button>
     `;
 
     if (status !== 'completed') {
-      el.addEventListener('click', () => this.complete(todo.id));
+      el.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('.todo-delete-btn')) return;
+        this.complete(todo.id);
+      });
     }
+
+    el.querySelector('.todo-delete-btn')!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.delete(todo.id);
+    });
+
     return el;
   }
 
@@ -229,6 +253,7 @@ class ChatArea {
         typeLabel: 'Log entry',
         content: entry.formatted_text,
         rawInput: entry.raw_text !== entry.formatted_text ? entry.raw_text : undefined,
+        entryId: entry.id,
       });
     }
   }
@@ -248,7 +273,7 @@ class ChatArea {
 
   append(msg: Message): void {
     const rawHtml = msg.rawInput
-      ? `<div class="msg-raw"><div class="msg-raw-label">Original input</div>${msg.rawInput}</div>`
+      ? `<div class="msg-raw"><div class="msg-raw-label">Original input</div>${escapeHtml(msg.rawInput)}</div>`
       : '';
 
     const el = document.createElement('div');
@@ -257,12 +282,76 @@ class ChatArea {
       <div class="msg-time">${msg.time}</div>
       <div class="msg-body">
         <div class="msg-type ${msg.type}">${msg.typeLabel}</div>
-        <div class="msg-content">${msg.content}</div>
+        <div class="msg-content"${msg.entryId ? ' data-editable="true"' : ''}>${msg.content}</div>
         ${rawHtml}
       </div>
     `;
+
+    if (msg.entryId) {
+      const contentEl = el.querySelector('.msg-content') as HTMLElement;
+      contentEl.addEventListener('click', () => {
+        this.startEdit(el, contentEl, msg);
+      });
+    }
+
     this.el.appendChild(el);
     this.el.scrollTop = this.el.scrollHeight;
+  }
+
+  private startEdit(msgEl: HTMLElement, contentEl: HTMLElement, msg: Message): void {
+    if (msgEl.querySelector('.msg-edit-area')) return; // already editing
+
+    const originalHtml = contentEl.innerHTML;
+    const fallbackText = contentEl.textContent ?? '';
+    contentEl.innerHTML = '';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'msg-edit-area';
+    textarea.value = msg.rawInput ?? fallbackText;
+    contentEl.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.className = 'msg-edit-actions';
+    actions.innerHTML = `
+      <button class="msg-edit-save">Save</button>
+      <button class="msg-edit-cancel">Cancel</button>
+    `;
+    contentEl.appendChild(actions);
+
+    textarea.focus();
+
+    actions.querySelector('.msg-edit-cancel')!.addEventListener('click', () => {
+      contentEl.innerHTML = originalHtml;
+    });
+
+    actions.querySelector('.msg-edit-save')!.addEventListener('click', async () => {
+      const newText = textarea.value.trim();
+      if (!newText || !msg.entryId) return;
+
+      const saveBtn = actions.querySelector('.msg-edit-save') as HTMLButtonElement;
+      saveBtn.textContent = '...';
+      saveBtn.disabled = true;
+
+      const adapter = await getAdapter();
+      let formatted = `<ul><li>${escapeHtml(newText)}</li></ul>`;
+
+      if (adapter) {
+        try {
+          formatted = await formatLogEntry(newText, adapter);
+        } catch {
+          // fall through to raw text
+        }
+      }
+
+      await execute(
+        'UPDATE log_entries SET raw_text = ?, formatted_text = ? WHERE id = ?',
+        [newText, formatted, msg.entryId]
+      );
+
+      msg.rawInput = newText;
+      msg.content = formatted;
+      contentEl.innerHTML = formatted;
+    });
   }
 }
 
@@ -278,6 +367,10 @@ class Sidebar {
     const now = new Date();
     this.monthLabel.textContent = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
     this.load();
+  }
+
+  refresh(): void {
+    void this.load();
   }
 
   private async load(): Promise<void> {
@@ -383,21 +476,46 @@ class InputHandler {
 
 class SettingsModal {
   private overlay: HTMLElement;
+  private providerSelect: HTMLSelectElement;
   private apiKeyInput: HTMLInputElement;
+  private modelInput: HTMLInputElement;
+  private baseUrlInput: HTMLInputElement;
+  private baseUrlGroup: HTMLElement;
 
   constructor() {
     this.overlay = document.getElementById('settingsModal')!;
+    this.providerSelect = document.getElementById('llmProviderSelect') as HTMLSelectElement;
     this.apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement;
+    this.modelInput = document.getElementById('llmModelInput') as HTMLInputElement;
+    this.baseUrlInput = document.getElementById('llmBaseUrlInput') as HTMLInputElement;
+    this.baseUrlGroup = document.getElementById('baseUrlGroup')!;
 
     document.getElementById('settingsCloseBtn')!.addEventListener('click', () => this.close());
     this.overlay.addEventListener('click', (e) => { if (e.target === this.overlay) this.close(); });
     document.getElementById('saveSettingsBtn')!.addEventListener('click', () => { void this.save(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.overlay.classList.contains('visible')) this.close(); });
+
+    this.providerSelect.addEventListener('change', () => this.syncBaseUrlVisibility());
+    this.syncBaseUrlVisibility();
+  }
+
+  private syncBaseUrlVisibility(): void {
+    this.baseUrlGroup.style.display = this.providerSelect.value === 'openai' ? 'block' : 'none';
   }
 
   async open(): Promise<void> {
-    const key = await getSetting('anthropic_api_key');
-    this.apiKeyInput.value = key ?? '';
+    const [provider, apiKey, model, baseUrl] = await Promise.all([
+      getSetting('llm_provider'),
+      getSetting('llm_api_key'),
+      getSetting('llm_model'),
+      getSetting('llm_base_url'),
+    ]);
+
+    this.providerSelect.value = provider ?? 'anthropic';
+    this.apiKeyInput.value = apiKey ?? '';
+    this.modelInput.value = model ?? '';
+    this.baseUrlInput.value = baseUrl ?? '';
+    this.syncBaseUrlVisibility();
     this.overlay.classList.add('visible');
   }
 
@@ -406,8 +524,33 @@ class SettingsModal {
   }
 
   private async save(): Promise<void> {
-    const key = this.apiKeyInput.value.trim();
-    await setSetting('anthropic_api_key', key);
+    const apiKey = this.apiKeyInput.value.trim();
+
+    if (!apiKey) {
+      await Promise.all([
+        execute('DELETE FROM settings WHERE key = ?', ['llm_provider']),
+        execute('DELETE FROM settings WHERE key = ?', ['llm_api_key']),
+        execute('DELETE FROM settings WHERE key = ?', ['llm_model']),
+        execute('DELETE FROM settings WHERE key = ?', ['llm_base_url']),
+      ]);
+      this.close();
+      return;
+    }
+
+    const provider = this.providerSelect.value;
+    const model = this.modelInput.value.trim();
+    const baseUrl = this.baseUrlInput.value.trim();
+
+    if (!model) {
+      alert('Please enter a model name.');
+      return;
+    }
+
+    await setSetting('llm_provider', provider);
+    await setSetting('llm_api_key', apiKey);
+    await setSetting('llm_model', model);
+    await setSetting('llm_base_url', provider === 'openai' ? baseUrl : '');
+
     this.close();
   }
 }
@@ -419,6 +562,7 @@ class App {
   private todoPanel: TodoPanel;
   private modal: LogModal;
   private settings: SettingsModal;
+  private sidebar: Sidebar;
   private inputHandler!: InputHandler;
 
   constructor() {
@@ -426,11 +570,23 @@ class App {
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
     this.settings = new SettingsModal();
-    new Sidebar();
+    this.sidebar = new Sidebar();
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
-    this.todoPanel.load();
-    this.loadTodayEntries();
+    void this.init();
+  }
+
+  private async init(): Promise<void> {
+    try {
+      await Promise.all([this.todoPanel.load(), this.loadTodayEntries()]);
+      await getAdapter();
+    } catch (err) {
+      console.error('Startup load failed:', err);
+      this.chatArea.append({
+        time: '--:--', type: 'system', typeLabel: 'System',
+        content: 'Failed to load data. Please restart the app.',
+      });
+    }
   }
 
   private async loadTodayEntries(): Promise<void> {
@@ -470,7 +626,7 @@ class App {
     for (const e of entries) {
       const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       if (!grouped.has(e.date)) grouped.set(e.date, []);
-      grouped.get(e.date)!.push({ text: e.formatted_text.replace(/<[^>]+>/g, '').trim(), time });
+      grouped.get(e.date)!.push({ text: stripHtml(e.formatted_text), time });
     }
 
     const modalData = Array.from(grouped.entries()).map(([date, items]) => {
@@ -497,34 +653,37 @@ class App {
       }
       if (!text) return;
       await this.todoPanel.add(text, false, deadline);
+      void this.sidebar.refresh();
       const label = deadline ? `Todo created — due ${deadline}` : 'Todo created';
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: text });
+      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(text) });
 
     } else if (value.startsWith('/done')) {
       const task = value.replace('/done', '').trim();
       const found = await this.todoPanel.completeByText(task);
+      void this.sidebar.refresh();
       this.chatArea.append({
         time, type: 'system', typeLabel: 'System',
         content: found
-          ? `Marked <span style="color:var(--text)">"${task}"</span> as complete.`
-          : `No active todo matching "${task}" found.`,
+          ? `Marked <span style="color:var(--text)">"${escapeHtml(task)}"</span> as complete.`
+          : `No active todo matching "${escapeHtml(task)}" found.`,
       });
 
     } else if (value.startsWith('/important')) {
       const text = value.replace('/important', '').trim();
       await this.todoPanel.add(text, true, null);
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: text });
+      void this.sidebar.refresh();
+      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(text) });
 
     } else {
       const today = new Date().toISOString().split('T')[0];
-      const apiKey = await getSetting('anthropic_api_key');
+      const adapter = await getAdapter();
 
       let formatted = `<ul><li>${escapeHtml(value)}</li></ul>`;
 
-      if (apiKey) {
+      if (adapter) {
         this.inputHandler.setLoading(true);
         try {
-          formatted = await formatLogEntry(value, apiKey);
+          formatted = await formatLogEntry(value, adapter);
         } catch (err) {
           console.error('AI format failed:', err);
           this.chatArea.append({
@@ -540,11 +699,20 @@ class App {
         'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
         [today, value, formatted, new Date().toISOString()]
       );
+
+      const rows = await query<{ id: number }>(
+        'SELECT id FROM log_entries WHERE date = ? ORDER BY created_at DESC LIMIT 1',
+        [today]
+      );
+
       this.chatArea.append({
         time, type: 'log', typeLabel: 'Log entry',
         content: formatted,
         rawInput: value,
+        entryId: rows[0]?.id,
       });
+
+      void this.sidebar.refresh();
     }
   }
 }

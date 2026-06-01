@@ -738,3 +738,100 @@ html, body {
 .settings-save-btn:hover {
   opacity: 0.85;
 }
+
+.todo-delete-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+
+.todo-item:hover .todo-delete-btn {
+  display: block;
+}
+
+.todo-delete-btn:hover {
+  color: var(--red);
+}
+
+.msg-edit-area {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.msg-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.msg-edit-save {
+  background: var(--accent);
+  border: none;
+  color: var(--bg);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.msg-edit-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.msg-edit-cancel:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.msg-content[data-editable="true"] {
+  cursor: pointer;
+}
+
+.msg-content[data-editable="true"]:hover {
+  opacity: 0.75;
+}
+
+.settings-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
