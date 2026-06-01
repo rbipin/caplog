@@ -83,13 +83,39 @@
           <button class="modal-close" id="settingsCloseBtn">✕</button>
         </div>
         <div class="modal-body settings-body">
-          <label class="settings-label">Anthropic API Key</label>
+          <label class="settings-label">Provider</label>
+          <select id="llmProviderSelect" class="settings-select">
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI-compatible</option>
+          </select>
+
+          <label class="settings-label">API Key</label>
           <input
             type="password"
             id="apiKeyInput"
             class="settings-input"
-            placeholder="sk-ant-..."
+            placeholder="sk-..."
           />
+
+          <label class="settings-label">Model</label>
+          <input
+            type="text"
+            id="llmModelInput"
+            class="settings-input"
+            placeholder="claude-haiku-4-5-20251001"
+          />
+
+          <div id="baseUrlGroup">
+            <label class="settings-label">Base URL</label>
+            <input
+              type="text"
+              id="llmBaseUrlInput"
+              class="settings-input"
+              placeholder="https://api.openai.com"
+            />
+            <p class="settings-hint">For Ollama use http://localhost:11434</p>
+          </div>
+
           <p class="settings-hint">Used for AI log formatting. Stored locally, never sent anywhere else.</p>
           <button id="saveSettingsBtn" class="settings-save-btn">Save</button>
         </div>
