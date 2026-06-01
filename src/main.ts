@@ -1,6 +1,7 @@
 import { initDB, query, execute, getSetting, setSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
+import { getAdapter } from './llm/factory.js';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -331,12 +332,12 @@ class ChatArea {
       saveBtn.textContent = '...';
       saveBtn.disabled = true;
 
-      const apiKey = await getSetting('anthropic_api_key');
+      const adapter = await getAdapter();
       let formatted = `<ul><li>${escapeHtml(newText)}</li></ul>`;
 
-      if (apiKey) {
+      if (adapter) {
         try {
-          formatted = await formatLogEntry(newText, apiKey);
+          formatted = await formatLogEntry(newText, adapter);
         } catch {
           // fall through to raw text
         }
@@ -628,14 +629,14 @@ class App {
 
     } else {
       const today = new Date().toISOString().split('T')[0];
-      const apiKey = await getSetting('anthropic_api_key');
+      const adapter = await getAdapter();
 
       let formatted = `<ul><li>${escapeHtml(value)}</li></ul>`;
 
-      if (apiKey) {
+      if (adapter) {
         this.inputHandler.setLoading(true);
         try {
-          formatted = await formatLogEntry(value, apiKey);
+          formatted = await formatLogEntry(value, adapter);
         } catch (err) {
           console.error('AI format failed:', err);
           this.chatArea.append({
