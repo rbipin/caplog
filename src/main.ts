@@ -541,6 +541,11 @@ class SettingsModal {
     const model = this.modelInput.value.trim();
     const baseUrl = this.baseUrlInput.value.trim();
 
+    if (!model) {
+      alert('Please enter a model name.');
+      return;
+    }
+
     await setSetting('llm_provider', provider);
     await setSetting('llm_api_key', apiKey);
     await setSetting('llm_model', model);
@@ -574,6 +579,7 @@ class App {
   private async init(): Promise<void> {
     try {
       await Promise.all([this.todoPanel.load(), this.loadTodayEntries()]);
+      await getAdapter();
     } catch (err) {
       console.error('Startup load failed:', err);
       this.chatArea.append({
