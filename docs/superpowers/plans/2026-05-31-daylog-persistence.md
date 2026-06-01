@@ -1300,17 +1300,537 @@ git commit -m "feat: polish — window size, empty state, keyboard shortcuts"
 
 ---
 
+---
+
+## Task 11: Delete Todo
+
+**Files:**
+- Modify: `src/main.ts` — `TodoPanel.renderItem` + `TodoPanel` (new `delete` method)
+- Modify: `src/styles.css` — delete button styles
+
+- [ ] **Step 11.1: Add delete button styles to `src/styles.css`**
+
+Append to `src/styles.css`:
+
+```css
+.todo-delete-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+
+.todo-item:hover .todo-delete-btn {
+  display: block;
+}
+
+.todo-delete-btn:hover {
+  color: var(--red);
+}
+```
+
+- [ ] **Step 11.2: Add `delete` method to `TodoPanel` in `src/main.ts`**
+
+Add this method to the `TodoPanel` class, after the `completeByText` method:
+
+```typescript
+async delete(id: number): Promise<void> {
+  await execute('DELETE FROM todos WHERE id = ?', [id]);
+  await this.load();
+}
+```
+
+- [ ] **Step 11.3: Update `TodoPanel.renderItem` to include the delete button**
+
+Replace the `renderItem` method in `TodoPanel`:
+
+```typescript
+private renderItem(todo: TodoItem): HTMLElement {
+  const status = this.todoStatus(todo);
+  const el = document.createElement('div');
+  el.className = `todo-item${status !== 'open' ? ` ${status}` : ''}`;
+  el.dataset.id = String(todo.id);
+
+  const checkInner = status === 'completed' ? '<span class="completed-check">✓</span>' : '';
+
+  const metaHtml = (() => {
+    const parts: string[] = [];
+    if (todo.deadline) {
+      parts.push(`<span class="todo-deadline${status === 'overdue' ? ' overdue' : ''}">${escapeHtml(todo.deadline)}</span>`);
+    }
+    if (status === 'important') {
+      parts.push('<span class="todo-badge important">important</span>');
+    } else if (status === 'overdue') {
+      parts.push('<span class="todo-badge overdue">due soon</span>');
+    }
+    return parts.length ? `<div class="todo-meta">${parts.join('')}</div>` : '';
+  })();
+
+  el.innerHTML = `
+    <div class="todo-check">${checkInner}</div>
+    <div style="flex:1">
+      <div class="todo-text">${escapeHtml(todo.text)}</div>
+      ${metaHtml}
+    </div>
+    <button class="todo-delete-btn" title="Delete">✕</button>
+  `;
+
+  if (status !== 'completed') {
+    el.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.todo-delete-btn')) return;
+      this.complete(todo.id);
+    });
+  }
+
+  el.querySelector('.todo-delete-btn')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    this.delete(todo.id);
+  });
+
+  return el;
+}
+```
+
+- [ ] **Step 11.4: Run and test**
+
+```bash
+pnpm tauri dev
+```
+
+Manual tests:
+1. Add a todo with `/todo Test delete`
+2. Hover over it — `✕` button appears on the right
+3. Click `✕` — todo disappears immediately
+4. Quit and reopen — deleted todo does not come back
+5. Click the todo row itself (not `✕`) — it still completes normally
+
+- [ ] **Step 11.5: Commit**
+
+```bash
+git add src/main.ts src/styles.css
+git commit -m "feat: delete todo via hover ✕ button"
+```
+
+---
+
+## Task 12: Edit Log Entry Inline
+
+**Files:**
+- Modify: `src/main.ts` — `ChatArea` + `ChatArea.append` + new `editEntry` logic
+- Modify: `src/styles.css` — inline edit styles
+
+The edit flow: clicking a log entry's content swaps it for a textarea pre-filled with the raw input. Save re-runs AI formatting (if API key set) or saves the text as-is. Cancel reverts to original display.
+
+- [ ] **Step 12.1: Add `LogEntry` id to the message interface**
+
+The `Message` interface in `src/main.ts` needs to carry the DB row id so edits can be saved back. Update the interface:
+
+```typescript
+interface Message {
+  time: string;
+  type: MessageType;
+  typeLabel: string;
+  content: string;
+  rawInput?: string;
+  entryId?: number;   // only set for 'log' type messages loaded from DB
+}
+```
+
+- [ ] **Step 12.2: Pass `entryId` when loading entries from DB**
+
+In `ChatArea.loadEntries`, update the `this.append()` call:
+
+```typescript
+loadEntries(entries: LogEntry[]): void {
+  for (const entry of entries) {
+    const time = new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    this.append({
+      time,
+      type: 'log',
+      typeLabel: 'Log entry',
+      content: entry.formatted_text,
+      rawInput: entry.raw_text !== entry.formatted_text ? entry.raw_text : undefined,
+      entryId: entry.id,
+    });
+  }
+}
+```
+
+Also update `App.handleInput` to pass the new entry id after inserting. Change the `execute` call + `chatArea.append` in the log branch:
+
+```typescript
+} else {
+  const today = new Date().toISOString().split('T')[0];
+  const apiKey = await getSetting('anthropic_api_key');
+
+  let formatted = `<ul><li>${escapeHtml(value)}</li></ul>`;
+
+  if (apiKey) {
+    this.inputHandler.setLoading(true);
+    try {
+      formatted = await formatLogEntry(value, apiKey);
+    } catch (err) {
+      console.error('AI format failed:', err);
+      this.chatArea.append({
+        time, type: 'system', typeLabel: 'System',
+        content: 'AI formatting failed — saved raw text.',
+      });
+    } finally {
+      this.inputHandler.setLoading(false);
+    }
+  }
+
+  await execute(
+    'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
+    [today, value, formatted, new Date().toISOString()]
+  );
+
+  const rows = await query<{ id: number }>(
+    'SELECT id FROM log_entries WHERE date = ? ORDER BY created_at DESC LIMIT 1',
+    [today]
+  );
+
+  this.chatArea.append({
+    time, type: 'log', typeLabel: 'Log entry',
+    content: formatted,
+    rawInput: value,
+    entryId: rows[0]?.id,
+  });
+}
+```
+
+- [ ] **Step 12.3: Add inline edit styles to `src/styles.css`**
+
+Append to `src/styles.css`:
+
+```css
+.msg-edit-area {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.msg-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.msg-edit-save {
+  background: var(--accent);
+  border: none;
+  color: var(--bg);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.msg-edit-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.msg-edit-cancel:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.msg-content[data-editable="true"] {
+  cursor: pointer;
+}
+
+.msg-content[data-editable="true"]:hover {
+  opacity: 0.75;
+}
+```
+
+- [ ] **Step 12.4: Update `ChatArea.append` to wire inline editing**
+
+Replace the `append` method in `ChatArea`:
+
+```typescript
+append(msg: Message): void {
+  document.getElementById('chatEmptyState')?.remove();
+
+  const rawHtml = msg.rawInput
+    ? `<div class="msg-raw"><div class="msg-raw-label">Original input</div>${escapeHtml(msg.rawInput)}</div>`
+    : '';
+
+  const el = document.createElement('div');
+  el.className = 'msg';
+  el.innerHTML = `
+    <div class="msg-time">${msg.time}</div>
+    <div class="msg-body">
+      <div class="msg-type ${msg.type}">${msg.typeLabel}</div>
+      <div class="msg-content"${msg.entryId ? ' data-editable="true"' : ''}>${msg.content}</div>
+      ${rawHtml}
+    </div>
+  `;
+
+  if (msg.entryId) {
+    const contentEl = el.querySelector('.msg-content') as HTMLElement;
+    contentEl.addEventListener('click', () => {
+      this.startEdit(el, contentEl, msg);
+    });
+  }
+
+  this.el.appendChild(el);
+  this.el.scrollTop = this.el.scrollHeight;
+}
+
+private startEdit(msgEl: HTMLElement, contentEl: HTMLElement, msg: Message): void {
+  if (msgEl.querySelector('.msg-edit-area')) return; // already editing
+
+  const originalHtml = contentEl.innerHTML;
+  contentEl.innerHTML = '';
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'msg-edit-area';
+  textarea.value = msg.rawInput ?? contentEl.textContent ?? '';
+  contentEl.appendChild(textarea);
+
+  const actions = document.createElement('div');
+  actions.className = 'msg-edit-actions';
+  actions.innerHTML = `
+    <button class="msg-edit-save">Save</button>
+    <button class="msg-edit-cancel">Cancel</button>
+  `;
+  contentEl.appendChild(actions);
+
+  textarea.focus();
+
+  actions.querySelector('.msg-edit-cancel')!.addEventListener('click', () => {
+    contentEl.innerHTML = originalHtml;
+  });
+
+  actions.querySelector('.msg-edit-save')!.addEventListener('click', async () => {
+    const newText = textarea.value.trim();
+    if (!newText || !msg.entryId) return;
+
+    const saveBtn = actions.querySelector('.msg-edit-save') as HTMLButtonElement;
+    saveBtn.textContent = '...';
+    saveBtn.disabled = true;
+
+    const apiKey = await getSetting('anthropic_api_key');
+    let formatted = `<ul><li>${escapeHtml(newText)}</li></ul>`;
+
+    if (apiKey) {
+      try {
+        formatted = await formatLogEntry(newText, apiKey);
+      } catch {
+        // fall through to raw text
+      }
+    }
+
+    await execute(
+      'UPDATE log_entries SET raw_text = ?, formatted_text = ? WHERE id = ?',
+      [newText, formatted, msg.entryId]
+    );
+
+    msg.rawInput = newText;
+    msg.content = formatted;
+    contentEl.innerHTML = formatted;
+  });
+}
+```
+
+- [ ] **Step 12.5: Ensure `getSetting` and `formatLogEntry` are accessible in `ChatArea`**
+
+`ChatArea` is a class in `src/main.ts` and both `getSetting` (from `./db.js`) and `formatLogEntry` (from `./ai.js`) are already imported at the top of that file, so they are in scope. No extra imports needed.
+
+- [ ] **Step 12.6: Run and test**
+
+```bash
+pnpm tauri dev
+```
+
+Manual tests:
+1. Type a plain log entry — it appears in the chat
+2. Click the log entry text — a textarea appears, pre-filled with the raw input
+3. Edit the text and click Save — the formatted text updates in place
+4. Click Cancel — original text is restored
+5. Quit and reopen — edited entry is still there
+6. With an API key set: edit and save — AI re-formats the updated text
+
+- [ ] **Step 12.7: Commit**
+
+```bash
+git add src/main.ts src/styles.css
+git commit -m "feat: inline edit for log entries — click to edit, re-format on save"
+```
+
+---
+
+## Task 13: Security & Reliability Hardening
+
+**From code review 2026-05-31. Address before Task 11/12 ship.**
+
+### 13.1 — Fix XSS: escape rawInput and plain-text content in ChatArea
+
+**Root cause:** `ChatArea.append()` inserts `msg.rawInput` and some `msg.content` values via `innerHTML` without escaping.
+
+**Files:** `src/main.ts`
+
+- [ ] **Step 13.1.1:** In `ChatArea.append()` (line ~251), change the rawHtml block to escape rawInput:
+```typescript
+const rawHtml = msg.rawInput
+  ? `<div class="msg-raw"><div class="msg-raw-label">Original input</div>${escapeHtml(msg.rawInput)}</div>`
+  : '';
+```
+
+- [ ] **Step 13.1.2:** In `App.handleInput`, the `/todo` branch passes `text` (raw user input) as `content`. Wrap it:
+```typescript
+this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(text) });
+```
+
+- [ ] **Step 13.1.3:** Same fix for `/important` branch — `content: escapeHtml(text)`.
+
+- [ ] **Step 13.1.4:** In the `/done` branch, escape `task` before embedding in the HTML string:
+```typescript
+content: found
+  ? `Marked <span style="color:var(--text)">"${escapeHtml(task)}"</span> as complete.`
+  : `No active todo matching "${escapeHtml(task)}" found.`,
+```
+
+---
+
+### 13.2 — Fix broken HTML tag-stripping regex
+
+**Root cause:** `/<[^>]+>/g` fails on tags whose attributes contain `>` (e.g. `data-x="a>b"`), leaving partial HTML injected into `innerHTML`.
+
+**Files:** `src/main.ts` (line ~473 in `openLogModal`), `src/export.ts` (line 19)
+
+- [ ] **Step 13.2.1:** Replace the regex-based strip with a proper DOM approach in `openLogModal`:
+```typescript
+function stripHtml(html: string): string {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent ?? tmp.innerText ?? '';
+}
+```
+Then use `stripHtml(e.formatted_text)` instead of `.replace(/<[^>]+>/g, '').trim()`.
+
+- [ ] **Step 13.2.2:** Apply the same `stripHtml` in `export.ts` line 19 instead of the regex.
+
+---
+
+### 13.3 — Fix LIKE wildcard injection in `completeByText`
+
+**Root cause:** User-supplied text is interpolated into a LIKE pattern; `%` and `_` match unintended todos.
+
+**File:** `src/main.ts` line ~130
+
+- [ ] **Step 13.3.1:** Escape LIKE metacharacters before interpolation:
+```typescript
+const escaped = text.replace(/[%_\\]/g, '\\$&');
+const rows = await query<TodoItem>(
+  "SELECT * FROM todos WHERE is_completed = 0 AND lower(text) LIKE lower(?) ESCAPE '\\'",
+  [`%${escaped}%`]
+);
+```
+
+---
+
+### 13.4 — Validate API key before saving
+
+**Root cause:** `SettingsModal.save()` persists `''` as a key; it's truthy-checked later but causes a confusing 401.
+
+**File:** `src/main.ts` line ~409
+
+- [ ] **Step 13.4.1:** In `SettingsModal.save()`, only write non-empty keys:
+```typescript
+private async save(): Promise<void> {
+  const key = this.apiKeyInput.value.trim();
+  if (key) {
+    await setSetting('anthropic_api_key', key);
+  } else {
+    await execute('DELETE FROM settings WHERE key = ?', ['anthropic_api_key']);
+  }
+  this.close();
+}
+```
+
+---
+
+### 13.5 — Store Sidebar reference and refresh after mutations
+
+**Root cause:** `new Sidebar()` instance is discarded; sidebar is never updated after log/todo writes.
+
+**File:** `src/main.ts`
+
+- [ ] **Step 13.5.1:** Store sidebar on `App` and expose a `refresh()` method:
+```typescript
+private sidebar: Sidebar;
+// in constructor:
+this.sidebar = new Sidebar();
+```
+Add `refresh(): Promise<void>` to `Sidebar` that calls `this.load()`.
+
+- [ ] **Step 13.5.2:** Call `void this.sidebar.refresh()` after each write in `handleInput` (after log insert, after todo add).
+
+---
+
+### 13.6 — Add error handling to startup async loads
+
+**Root cause:** `todoPanel.load()` and `loadTodayEntries()` are fire-and-forget in the constructor; DB errors are invisible.
+
+**File:** `src/main.ts` line ~432
+
+- [ ] **Step 13.6.1:** Wrap both in an `init()` method with error feedback:
+```typescript
+private async init(): Promise<void> {
+  try {
+    await Promise.all([this.todoPanel.load(), this.loadTodayEntries()]);
+  } catch (err) {
+    console.error('Startup load failed:', err);
+    this.chatArea.append({ time: '--:--', type: 'system', typeLabel: 'System',
+      content: 'Failed to load data. Please restart the app.' });
+  }
+}
+```
+Call `void this.init()` from the constructor instead.
+
+---
+
 ## Milestone Summary
 
 | Task | What it delivers | Status |
 |---|---|---|
-| 1 — SQLite setup | Schema migration + Rust plugin | - [ ] |
-| 2 — DB layer | `src/db.ts` abstraction | - [ ] |
-| 3 — Todo persistence | Todos survive restart | - [ ] |
-| 4 — Log persistence | Log entries survive restart | - [ ] |
-| 5 — Sidebar real data | Sidebar shows actual history | - [ ] |
-| 6 — Log modal real data | Modal shows actual entries | - [ ] |
-| 7 — AI formatting | Claude Haiku cleans up log text | - [ ] |
-| 8 — Settings panel | API key stored + retrieved | - [ ] |
-| 9 — Export | Markdown file save dialog | - [ ] |
-| 10 — Polish | Window size, empty states, shortcuts | - [ ] |
+| 1 — SQLite setup | Schema migration + Rust plugin | - [x] |
+| 2 — DB layer | `src/db.ts` abstraction | - [x] |
+| 3 — Todo persistence | Todos survive restart | - [x] |
+| 4 — Log persistence | Log entries survive restart | - [x] |
+| 5 — Sidebar real data | Sidebar shows actual history | - [x] |
+| 6 — Log modal real data | Modal shows actual entries | - [x] |
+| 7 — AI formatting | Claude Haiku cleans up log text | - [x] |
+| 8 — Settings panel | API key stored + retrieved | - [x] |
+| 9 — Export | Markdown file save dialog | - [x] |
+| 10 — Polish | Window size, empty states, shortcuts | - [x] |
+| 11 — Delete todo | Hover ✕ removes todo permanently | - [ ] |
+| 12 — Edit log entry | Click to edit, re-format, and save | - [ ] |
+| 13 — Security hardening | XSS fixes, LIKE escaping, sidebar refresh, error handling | - [ ] |

@@ -6,9 +6,9 @@
   --surface-2: #1e1e1e;
   --border: #2a2a2a;
   --border-hover: #3a3a3a;
-  --text: #e8e4dc;
-  --text-muted: #6b6660;
-  --text-dim: #3d3a37;
+  --text: #f2ede4;
+  --text-muted: #908b84;
+  --text-dim: #5e5a56;
   --accent: #c8a96e;
   --accent-dim: #c8a96e22;
   --red: #e05c5c;
@@ -26,7 +26,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.6;
   overflow: hidden;
 }
@@ -58,14 +58,14 @@ html, body {
 
 .header-logo {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: 20px;
   color: var(--accent);
   letter-spacing: -0.02em;
   font-style: italic;
 }
 
 .header-date {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -84,7 +84,7 @@ html, body {
   padding: 5px 12px;
   border-radius: 4px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   letter-spacing: 0.05em;
   transition: all 0.15s;
@@ -172,12 +172,12 @@ html, body {
 .modal-title {
   font-family: var(--font-serif);
   font-style: italic;
-  font-size: 16px;
+  font-size: 18px;
   color: var(--accent);
 }
 
 .modal-subtitle {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -215,7 +215,7 @@ html, body {
 }
 
 .log-view-date {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--accent);
@@ -228,7 +228,7 @@ html, body {
   padding: 4px 0;
   padding-left: 14px;
   position: relative;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text);
   line-height: 1.6;
 }
@@ -241,7 +241,7 @@ html, body {
 }
 
 .log-view-time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
   margin-left: 6px;
 }
@@ -273,7 +273,7 @@ html, body {
 }
 
 .sidebar-section-title {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -301,7 +301,7 @@ html, body {
 }
 
 .day-entry-date {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   min-width: 28px;
   text-align: center;
@@ -309,12 +309,12 @@ html, body {
 }
 
 .day-entry-dow {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-dim);
 }
 
 .day-entry-num {
-  font-size: 18px;
+  font-size: 20px;
   font-family: var(--font-serif);
   line-height: 1;
   color: var(--text);
@@ -325,7 +325,7 @@ html, body {
 }
 
 .day-entry-preview {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-muted);
   line-height: 1.4;
   overflow: hidden;
@@ -341,7 +341,7 @@ html, body {
 }
 
 .tag {
-  font-size: 9px;
+  font-size: 10px;
   padding: 1px 5px;
   border-radius: 2px;
   letter-spacing: 0.05em;
@@ -382,7 +382,7 @@ html, body {
 }
 
 .day-divider-label {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -402,7 +402,7 @@ html, body {
 }
 
 .msg-time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
   min-width: 40px;
   padding-top: 3px;
@@ -414,7 +414,7 @@ html, body {
 }
 
 .msg-type {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 3px;
@@ -426,7 +426,7 @@ html, body {
 
 .msg-content {
   color: var(--text);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.65;
 }
 
@@ -450,7 +450,7 @@ html, body {
 }
 
 .msg-raw {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-muted);
   margin-top: 6px;
   padding: 8px 10px;
@@ -461,7 +461,7 @@ html, body {
 }
 
 .msg-raw-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-dim);
   letter-spacing: 0.08em;
   margin-bottom: 2px;
@@ -477,7 +477,7 @@ html, body {
 }
 
 .input-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
   margin-bottom: 8px;
   letter-spacing: 0.04em;
@@ -489,7 +489,7 @@ html, body {
   padding: 1px 5px;
   border-radius: 3px;
   margin: 0 2px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .input-row {
@@ -505,7 +505,7 @@ html, body {
   border-radius: 6px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 15px;
   padding: 10px 14px;
   resize: none;
   min-height: 42px;
@@ -565,14 +565,14 @@ html, body {
 }
 
 .todo-title {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .todo-count {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
 }
 
@@ -583,7 +583,7 @@ html, body {
 }
 
 .todo-section-label {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -638,7 +638,7 @@ html, body {
 }
 
 .todo-text {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text);
   line-height: 1.5;
   flex: 1;
@@ -657,7 +657,7 @@ html, body {
 }
 
 .todo-deadline {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -666,7 +666,7 @@ html, body {
 }
 
 .todo-badge {
-  font-size: 9px;
+  font-size: 10px;
   padding: 1px 5px;
   border-radius: 2px;
   letter-spacing: 0.05em;
@@ -677,7 +677,7 @@ html, body {
 
 .completed-check {
   color: var(--green);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .todo-item.completed .todo-check {
@@ -699,7 +699,7 @@ html, body {
 }
 
 .settings-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -712,13 +712,13 @@ html, body {
   padding: 8px 12px;
   border-radius: 4px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   width: 100%;
   box-sizing: border-box;
 }
 
 .settings-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   margin: 0;
 }
@@ -732,7 +732,7 @@ html, body {
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .settings-save-btn:hover {
