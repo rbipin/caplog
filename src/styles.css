@@ -760,3 +760,60 @@ html, body {
 .todo-delete-btn:hover {
   color: var(--red);
 }
+
+.msg-edit-area {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.msg-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.msg-edit-save {
+  background: var(--accent);
+  border: none;
+  color: var(--bg);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.msg-edit-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.msg-edit-cancel:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.msg-content[data-editable="true"] {
+  cursor: pointer;
+}
+
+.msg-content[data-editable="true"]:hover {
+  opacity: 0.75;
+}

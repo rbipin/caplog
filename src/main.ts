@@ -38,6 +38,7 @@ interface Message {
   typeLabel: string;
   content: string;
   rawInput?: string;
+  entryId?: number;   // only set for 'log' type messages loaded from DB
 }
 
 interface LogEntry {
@@ -251,6 +252,7 @@ class ChatArea {
         typeLabel: 'Log entry',
         content: entry.formatted_text,
         rawInput: entry.raw_text !== entry.formatted_text ? entry.raw_text : undefined,
+        entryId: entry.id,
       });
     }
   }
@@ -279,12 +281,76 @@ class ChatArea {
       <div class="msg-time">${msg.time}</div>
       <div class="msg-body">
         <div class="msg-type ${msg.type}">${msg.typeLabel}</div>
-        <div class="msg-content">${msg.content}</div>
+        <div class="msg-content"${msg.entryId ? ' data-editable="true"' : ''}>${msg.content}</div>
         ${rawHtml}
       </div>
     `;
+
+    if (msg.entryId) {
+      const contentEl = el.querySelector('.msg-content') as HTMLElement;
+      contentEl.addEventListener('click', () => {
+        this.startEdit(el, contentEl, msg);
+      });
+    }
+
     this.el.appendChild(el);
     this.el.scrollTop = this.el.scrollHeight;
+  }
+
+  private startEdit(msgEl: HTMLElement, contentEl: HTMLElement, msg: Message): void {
+    if (msgEl.querySelector('.msg-edit-area')) return; // already editing
+
+    const originalHtml = contentEl.innerHTML;
+    const fallbackText = contentEl.textContent ?? '';
+    contentEl.innerHTML = '';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'msg-edit-area';
+    textarea.value = msg.rawInput ?? fallbackText;
+    contentEl.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.className = 'msg-edit-actions';
+    actions.innerHTML = `
+      <button class="msg-edit-save">Save</button>
+      <button class="msg-edit-cancel">Cancel</button>
+    `;
+    contentEl.appendChild(actions);
+
+    textarea.focus();
+
+    actions.querySelector('.msg-edit-cancel')!.addEventListener('click', () => {
+      contentEl.innerHTML = originalHtml;
+    });
+
+    actions.querySelector('.msg-edit-save')!.addEventListener('click', async () => {
+      const newText = textarea.value.trim();
+      if (!newText || !msg.entryId) return;
+
+      const saveBtn = actions.querySelector('.msg-edit-save') as HTMLButtonElement;
+      saveBtn.textContent = '...';
+      saveBtn.disabled = true;
+
+      const apiKey = await getSetting('anthropic_api_key');
+      let formatted = `<ul><li>${escapeHtml(newText)}</li></ul>`;
+
+      if (apiKey) {
+        try {
+          formatted = await formatLogEntry(newText, apiKey);
+        } catch {
+          // fall through to raw text
+        }
+      }
+
+      await execute(
+        'UPDATE log_entries SET raw_text = ?, formatted_text = ? WHERE id = ?',
+        [newText, formatted, msg.entryId]
+      );
+
+      msg.rawInput = newText;
+      msg.content = formatted;
+      contentEl.innerHTML = formatted;
+    });
   }
 }
 
@@ -585,12 +651,20 @@ class App {
         'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
         [today, value, formatted, new Date().toISOString()]
       );
-      void this.sidebar.refresh();
+
+      const rows = await query<{ id: number }>(
+        'SELECT id FROM log_entries WHERE date = ? ORDER BY created_at DESC LIMIT 1',
+        [today]
+      );
+
       this.chatArea.append({
         time, type: 'log', typeLabel: 'Log entry',
         content: formatted,
         rawInput: value,
+        entryId: rows[0]?.id,
       });
+
+      void this.sidebar.refresh();
     }
   }
 }
