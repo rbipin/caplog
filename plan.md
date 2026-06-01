@@ -377,7 +377,45 @@ Add a minimal settings view (gear icon in header) containing:
 
 ---
 
-## Phase 6 — Polish
+## Phase 6 — Edit & Delete
+
+**Estimated time: 2–3 days**
+
+### 6a — Delete Todo
+
+Right-click (or hover → ✕ button) on any todo to delete it permanently.
+
+**UI:** On hover, show a small `✕` button on the right side of the todo row. Clicking it calls:
+
+```javascript
+await execute('DELETE FROM todos WHERE id = ?', [id]);
+await this.load();
+```
+
+Do not ask for confirmation — deletion is low-stakes and the action is obvious.
+
+**Milestone:** Hovering a todo reveals a delete button. Clicking it removes the row instantly and persists across restart.
+
+---
+
+### 6b — Edit Log Entry Text
+
+Click a log entry in the chat area to switch it into an inline edit mode. The formatted text becomes an editable `<textarea>` pre-filled with the raw original input. On save, re-run AI formatting (if API key set) or save the edited text as-is.
+
+**Flow:**
+1. Click `.msg-content` → replace with `<textarea>` containing `raw_text`
+2. Show Save / Cancel buttons below
+3. On Save:
+   - If API key set: call `formatLogEntry(editedText, apiKey)`, update both `raw_text` and `formatted_text`
+   - If no key: save edited text as both fields
+   - `UPDATE log_entries SET raw_text = ?, formatted_text = ? WHERE id = ?`
+4. Re-render the message in place
+
+**Milestone:** Clicking a log entry lets you edit and re-save it. The updated text appears immediately and persists across restart.
+
+---
+
+## Phase 7 — Polish
 
 **Estimated time: 2–3 days**
 
@@ -390,7 +428,7 @@ Add a minimal settings view (gear icon in header) containing:
 
 ---
 
-## Phase 7 — Build & Package
+## Phase 8 — Build & Package
 
 **Estimated time: 1–2 days**
 
@@ -433,9 +471,11 @@ A `.dmg` installs and runs on macOS. An `.msi` installs and runs on Windows. Bot
 | 4b — Logging | Log entries save and load by date | 1–2 days |
 | 4c — AI | Formatted bullet points appear in UI | 1 day |
 | 5 — Features | Export works, settings persist | 3–4 days |
-| 6 — Polish | Loading states, errors, empty states | 2–3 days |
-| 7 — Build | Installable `.dmg` and `.msi` exist | 1–2 days |
-| **Total** | | **4–6 weeks part-time** |
+| 6a — Delete Todo | Hover ✕ removes todo permanently | 1 day |
+| 6b — Edit Log | Click to edit, re-format, and save | 1–2 days |
+| 7 — Polish | Loading states, errors, empty states | 2–3 days |
+| 8 — Build | Installable `.dmg` and `.msi` exist | 1–2 days |
+| **Total** | | **5–7 weeks part-time** |
 
 ---
 

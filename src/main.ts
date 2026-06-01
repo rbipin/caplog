@@ -2,60 +2,10 @@ import { initDB, query, execute, getSetting, setSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
 import { getAdapter } from './llm/factory.js';
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function stripHtml(html: string): string {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent ?? tmp.innerText ?? '';
-}
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface TodoItem {
-  id: number;
-  text: string;
-  is_important: number;
-  is_completed: number;
-  deadline: string | null;
-  created_at: string;
-  completed_at: string | null;
-}
-
-type MessageType = 'log' | 'todo-created' | 'system';
-
-interface Message {
-  time: string;
-  type: MessageType;
-  typeLabel: string;
-  content: string;
-  rawInput?: string;
-  entryId?: number;   // only set for 'log' type messages loaded from DB
-}
-
-interface LogEntry {
-  id: number;
-  date: string;
-  raw_text: string;
-  formatted_text: string;
-  created_at: string;
-}
-
-interface DayStats {
-  date: string;
-  log_count: number;
-  todo_done_count: number;
-  preview: string;
-}
+import { escapeHtml, stripHtml } from './utils.js';
+import { TodoItem, Message, LogEntry, DayStats } from './types.js';
+import { parseCommand } from './commands.js';
+import { todoStatus, getTodoSections } from './todoLogic.js';
 
 // ─── LogModal ─────────────────────────────────────────────────────────────────
 
@@ -148,18 +98,8 @@ class TodoPanel {
     await this.load();
   }
 
-  private todoStatus(todo: TodoItem): string {
-    if (todo.is_completed) return 'completed';
-    if (todo.is_important) return 'important';
-    if (todo.deadline) {
-      const today = new Date().toISOString().split('T')[0];
-      if (todo.deadline <= today) return 'overdue';
-    }
-    return 'open';
-  }
-
   private renderItem(todo: TodoItem): HTMLElement {
-    const status = this.todoStatus(todo);
+    const status = todoStatus(todo);
     const el = document.createElement('div');
     el.className = `todo-item${status !== 'open' ? ` ${status}` : ''}`;
     el.dataset.id = String(todo.id);
@@ -206,13 +146,7 @@ class TodoPanel {
   private render(todos: TodoItem[]): void {
     this.listEl.innerHTML = '';
 
-    const today = new Date().toISOString().split('T')[0];
-    const sections: { label: string; filter: (t: TodoItem) => boolean }[] = [
-      { label: 'Important', filter: (t) => !t.is_completed && !!t.is_important },
-      { label: 'Due / Overdue', filter: (t) => !t.is_completed && !t.is_important && !!t.deadline && t.deadline <= today },
-      { label: 'Open', filter: (t) => !t.is_completed && !t.is_important && (!t.deadline || t.deadline > today) },
-      { label: 'Completed today', filter: (t) => !!t.is_completed },
-    ];
+    const sections = getTodoSections();
 
     for (const section of sections) {
       const items = todos.filter(section.filter);
@@ -642,48 +576,39 @@ class App {
     const now = new Date();
     const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
-    if (value.startsWith('/todo')) {
-      const rest = value.replace('/todo', '').trim();
-      const byIdx = rest.indexOf(' /by ');
-      let text = rest;
-      let deadline: string | null = null;
-      if (byIdx !== -1) {
-        text = rest.slice(0, byIdx).trim();
-        deadline = rest.slice(byIdx + 5).trim();
-      }
-      if (!text) return;
-      await this.todoPanel.add(text, false, deadline);
-      void this.sidebar.refresh();
-      const label = deadline ? `Todo created — due ${deadline}` : 'Todo created';
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(text) });
+    const cmd = parseCommand(value);
 
-    } else if (value.startsWith('/done')) {
-      const task = value.replace('/done', '').trim();
-      const found = await this.todoPanel.completeByText(task);
+    if (cmd.type === 'todo') {
+      await this.todoPanel.add(cmd.text, false, cmd.deadline);
+      void this.sidebar.refresh();
+      const label = cmd.deadline ? `Todo created — due ${cmd.deadline}` : 'Todo created';
+      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(cmd.text) });
+
+    } else if (cmd.type === 'done') {
+      const found = await this.todoPanel.completeByText(cmd.task);
       void this.sidebar.refresh();
       this.chatArea.append({
         time, type: 'system', typeLabel: 'System',
         content: found
-          ? `Marked <span style="color:var(--text)">"${escapeHtml(task)}"</span> as complete.`
-          : `No active todo matching "${escapeHtml(task)}" found.`,
+          ? `Marked <span style="color:var(--text)">"${escapeHtml(cmd.task)}"</span> as complete.`
+          : `No active todo matching "${escapeHtml(cmd.task)}" found.`,
       });
 
-    } else if (value.startsWith('/important')) {
-      const text = value.replace('/important', '').trim();
-      await this.todoPanel.add(text, true, null);
+    } else if (cmd.type === 'important') {
+      await this.todoPanel.add(cmd.text, true, null);
       void this.sidebar.refresh();
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(text) });
+      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(cmd.text) });
 
-    } else {
+    } else if (cmd.type === 'log') {
       const today = new Date().toISOString().split('T')[0];
       const adapter = await getAdapter();
 
-      let formatted = `<ul><li>${escapeHtml(value)}</li></ul>`;
+      let formatted = `<ul><li>${escapeHtml(cmd.text)}</li></ul>`;
 
       if (adapter) {
         this.inputHandler.setLoading(true);
         try {
-          formatted = await formatLogEntry(value, adapter);
+          formatted = await formatLogEntry(cmd.text, adapter);
         } catch (err) {
           console.error('AI format failed:', err);
           this.chatArea.append({
@@ -697,7 +622,7 @@ class App {
 
       await execute(
         'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
-        [today, value, formatted, new Date().toISOString()]
+        [today, cmd.text, formatted, new Date().toISOString()]
       );
 
       const rows = await query<{ id: number }>(
@@ -708,12 +633,13 @@ class App {
       this.chatArea.append({
         time, type: 'log', typeLabel: 'Log entry',
         content: formatted,
-        rawInput: value,
+        rawInput: cmd.text,
         entryId: rows[0]?.id,
       });
 
       void this.sidebar.refresh();
     }
+    // empty: do nothing
   }
 }
 
