@@ -22,6 +22,9 @@ pnpm test:watch
 
 # Build the distributable Tauri app
 pnpm tauri build
+
+# Windows: automated build with prerequisite checks + MSVC env setup
+./scripts/build-windows.ps1
 ```
 
 ## Architecture
@@ -59,6 +62,14 @@ Each UI class lives in its own file under `src/components/`. `src/app.ts` is the
 
 SQLite migrations run automatically at startup from `src-tauri/migrations/`. Tables: `log_entries`, `todos`, `settings`.
 
+### Scripts (`scripts/`)
+
+Helper scripts that aren't part of the app runtime.
+
+| File | Purpose |
+|------|---------|
+| `scripts/build-windows.ps1` | Automated Windows build. Checks Rust/Node/pnpm, locates a Visual Studio install with the full Desktop x64 MSVC + Windows SDK (skipping OneCore-only installs), loads `vcvars64.bat` into the current PowerShell process, then runs `pnpm install` (if needed) and `pnpm tauri build`. Flags: `-InstallMissing` (auto-install missing tools via winget), `-ForceInstall` (always run `pnpm install`), `-SkipBuild` (env check only). See the "Windows build FAQ" in README.md for the issues this script addresses (vcvars not loaded, `LNK1104: msvcrt.lib` from partial VS installs, Tauri JS/Rust version mismatch). |
+
 ### Design reference
 
 `sample/daylog-mock.html` is the canonical UI reference — a self-contained file with working JS, dark theme, and all three-column layout. Match it for visual design and interactions when building features.
@@ -79,3 +90,5 @@ Tests live in `src/__tests__/`. Run with `pnpm test`.
 - Package manager: **pnpm**
 - All ESM imports use `.js` extension (Vite requirement), even for `.ts` source files
 - DB access goes through `src/db.ts` (`query`, `execute`, `getSetting`, `setSetting`) — never import `tauri-plugin-sql` directly in components
+- The `tauri` Rust crate and `@tauri-apps/api` / `@tauri-apps/cli` npm packages must share the same `major.minor`. If you bump one, bump the others (`pnpm update @tauri-apps/api @tauri-apps/cli`).
+- On Windows, `pnpm tauri build` fails with `LNK1104: msvcrt.lib` unless the MSVC env vars are loaded. Use `scripts/build-windows.ps1` or run from "x64 Native Tools Command Prompt for VS 2022". Partial VS installs that only ship the OneCore CRT subset will not work — the full "Desktop development with C++" workload is required.
