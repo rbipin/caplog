@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const saveMock = vi.fn();
-const writeTextFileMock = vi.fn();
-const queryMock = vi.fn();
+const { saveMock, writeTextFileMock, queryMock } = vi.hoisted(() => ({
+  saveMock: vi.fn(),
+  writeTextFileMock: vi.fn(),
+  queryMock: vi.fn(),
+}));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({ save: saveMock }));
 vi.mock('@tauri-apps/plugin-fs', () => ({ writeTextFile: writeTextFileMock }));
@@ -26,18 +28,14 @@ describe('exportMarkdown', () => {
 
   it('queries log_entries ordered by date DESC and created_at ASC', async () => {
     await exportMarkdown();
-    expect(queryMock).toHaveBeenCalledWith(
-      expect.stringContaining('log_entries'),
-      expect.anything()
-    );
     const [sql] = queryMock.mock.calls[0];
+    expect(sql).toContain('log_entries');
     expect(sql).toMatch(/ORDER BY.*date DESC.*created_at ASC/i);
   });
 
   it('entries are grouped by date with correct headings', async () => {
     await exportMarkdown();
     const md = writeTextFileMock.mock.calls[0][1] as string;
-    // Both dates should produce headings containing the year 2026
     const headings = md.match(/^## .+$/gm) ?? [];
     expect(headings.length).toBe(2);
     expect(headings.some(h => h.includes('2026'))).toBe(true);
@@ -97,7 +95,6 @@ describe('exportMarkdown', () => {
   it('entries from the same date appear under the same heading', async () => {
     await exportMarkdown();
     const md = writeTextFileMock.mock.calls[0][1] as string;
-    // There should be exactly 2 date headings for 2 distinct dates in sampleEntries
     const headings = md.match(/^## /gm) ?? [];
     expect(headings.length).toBe(2);
   });
