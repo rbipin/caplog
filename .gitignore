@@ -21,7 +21,7 @@ src-tauri/gen/
 
 # Rust
 **/*.rs.bk
-
+Cargo.lock
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
