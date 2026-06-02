@@ -193,6 +193,57 @@ pnpm tauri build
 
 **Prerequisites:** [Rust](https://www.rust-lang.org/tools/install), [Node.js](https://nodejs.org/), [pnpm](https://pnpm.io/installation), [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
+### Building for macOS
+
+```bash
+# Install Xcode Command Line Tools (if not already)
+xcode-select --install
+
+pnpm install
+pnpm tauri build
+```
+
+Output:
+
+- `.dmg` installer → `src-tauri/target/release/bundle/dmg/`
+- `.app` bundle → `src-tauri/target/release/bundle/macos/`
+
+> The app is unsigned. To open locally, right-click → **Open** instead of double-clicking (Gatekeeper will block a double-click on unsigned apps).
+
+### Building for Windows
+
+Run on a Windows machine or VM — Tauri does not support macOS → Windows cross-compilation.
+
+```powershell
+# Install Rust
+winget install Rustlang.Rustup
+
+# Install Node.js (if needed)
+winget install OpenJS.NodeJS
+
+# Install pnpm
+npm install -g pnpm
+
+# Microsoft C++ Build Tools — required by Rust
+# Download from https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# Select the "Desktop development with C++" workload
+
+pnpm install
+pnpm tauri build
+```
+
+Output:
+
+- `.exe` NSIS installer → `src-tauri\target\release\bundle\nsis\`
+- `.msi` installer → `src-tauri\target\release\bundle\msi\`
+
+> First build takes 5–10 min while Rust compiles dependencies; subsequent builds are much faster.
+> Installers are unsigned — Windows SmartScreen will warn users until a code-signing certificate is configured.
+
+### CI builds (all platforms in parallel)
+
+The [tauri-action](https://github.com/tauri-apps/tauri-action) GitHub Action builds for macOS, Windows, and Linux without needing local VMs. Add `.github/workflows/release.yml` using that action to automate releases.
+
 ---
 
 ## Design
