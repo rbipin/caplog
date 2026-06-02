@@ -232,6 +232,13 @@ pnpm install
 pnpm tauri build
 ```
 
+Or use the helper script that checks prerequisites and loads the MSVC environment automatically:
+
+```powershell
+# From the repo root
+./scripts/build-windows.ps1
+```
+
 Output:
 
 - `.exe` NSIS installer → `src-tauri\target\release\bundle\nsis\`
@@ -239,6 +246,46 @@ Output:
 
 > First build takes 5–10 min while Rust compiles dependencies; subsequent builds are much faster.
 > Installers are unsigned — Windows SmartScreen will warn users until a code-signing certificate is configured.
+
+#### Windows build FAQ / troubleshooting
+
+**Q: `Found version mismatched Tauri packages` — e.g. `tauri (v2.11.2) : @tauri-apps/api (v2.10.1)`**
+
+The Rust `tauri` crate and the npm `@tauri-apps/api` / `@tauri-apps/cli` packages must share the same `major.minor` version. Update the npm side to match:
+
+```powershell
+pnpm update @tauri-apps/api @tauri-apps/cli
+```
+
+If pnpm refuses to bump across a minor, pin the exact version in `package.json` (e.g. `"@tauri-apps/api": "^2.11.0"`) and re-run `pnpm install`.
+
+**Q: `LINK : fatal error LNK1104: cannot open file 'msvcrt.lib'` (or `libcmt.lib`, `kernel32.lib`, `ucrt.lib`)**
+
+The Rust MSVC linker can't find the Windows SDK / CRT libraries because the MSVC environment variables (`LIB`, `INCLUDE`, `PATH`) aren't set in your shell. Two common causes:
+
+1. **You're running in a plain PowerShell window.** Fix: launch **"x64 Native Tools Command Prompt for VS 2022"** from the Start menu, or load the env into your current shell:
+
+   ```powershell
+   cmd /c '"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && set' |
+     Where-Object { $_ -match '^(LIB|INCLUDE|LIBPATH|Path)=' } |
+     ForEach-Object { $n,$v = $_ -split '=',2; [Environment]::SetEnvironmentVariable($n,$v,'Process') }
+   ```
+
+   (Adjust the path for `Community` / `Professional` editions.)
+
+2. **You have multiple VS installs and the one picked up is incomplete** — e.g. only the `OneCore` subset of MSVC libs was installed, so `msvcrt.lib` lives under `VC\Tools\MSVC\<ver>\lib\onecore\x64\` but not under `lib\x64\`. Fix: open the Visual Studio Installer, **Modify** the install, and add the **"Desktop development with C++"** workload (which installs the full Desktop x64 CRT). Or uninstall the partial toolchain so the linker uses a complete one. The helper script `scripts/build-windows.ps1` automatically skips installs that don't contain the Desktop x64 CRT.
+
+**Q: `error: linker 'link.exe' not found`**
+
+You have no MSVC toolchain at all. Install the **"Desktop development with C++"** workload via the [Visual Studio Build Tools installer](https://visualstudio.microsoft.com/visual-cpp-build-tools/), then restart your terminal so `link.exe` is on `PATH`.
+
+**Q: WebView2 / WiX / NSIS download errors during bundling**
+
+`tauri build` downloads WiX (for `.msi`) and NSIS (for `.exe`) on first use. If you're behind a proxy, set `HTTPS_PROXY` before building. If a download is corrupt, delete `%LOCALAPPDATA%\tauri` and rebuild.
+
+**Q: First build is extremely slow**
+
+Normal — Rust compiles the full dependency tree (300+ crates) on first build. Subsequent builds reuse `target\` and complete in seconds. Don't delete `src-tauri\target\` unless you actually need a clean rebuild.
 
 ### CI builds (all platforms in parallel)
 
