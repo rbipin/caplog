@@ -103,7 +103,7 @@ describe('SettingsModal', () => {
     expect((document.getElementById('baseUrlGroup') as HTMLElement).style.display).toBe('block');
   });
 
-  it('save() with empty API key deletes all four setting rows', async () => {
+  it('save() with empty API key deletes all five setting rows', async () => {
     await openSettings();
     // apiKeyInput is empty (reset in beforeEach)
     document.getElementById('saveSettingsBtn')!.click();
