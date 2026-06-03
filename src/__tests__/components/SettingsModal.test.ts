@@ -64,13 +64,13 @@ describe('SettingsModal', () => {
     resetInputs();
   });
 
-  it('open() reads all four settings from db and populates inputs', async () => {
+  it('open() reads all five settings from db and populates inputs', async () => {
     getSettingMock.mockImplementation(async (key: string) => {
       if (key === 'llm_provider') return 'anthropic';
       if (key === 'llm_api_key') return 'sk-test-key';
       if (key === 'llm_model') return 'claude-haiku-4-5-20251001';
       if (key === 'llm_base_url') return '';
-      if (key === 'chat_days') return '3';
+      if (key === 'chat_days') return '5';
       return null;
     });
 
@@ -79,6 +79,7 @@ describe('SettingsModal', () => {
     expect((document.getElementById('apiKeyInput') as HTMLInputElement).value).toBe('sk-test-key');
     expect((document.getElementById('llmModelInput') as HTMLInputElement).value).toBe('claude-haiku-4-5-20251001');
     expect((document.getElementById('llmProviderSelect') as HTMLSelectElement).value).toBe('anthropic');
+    expect((document.getElementById('chatDaysInput') as HTMLInputElement).value).toBe('5');
   });
 
   it('base-URL group is hidden when provider is anthropic', async () => {
@@ -113,10 +114,11 @@ describe('SettingsModal', () => {
     expect(deleteCalls.length).toBe(5);
   });
 
-  it('save() with valid inputs writes provider, key, model, baseUrl to db', async () => {
+  it('save() with valid inputs writes provider, key, model, baseUrl, and chat_days to db', async () => {
     await openSettings();
     (document.getElementById('apiKeyInput') as HTMLInputElement).value = 'sk-valid-key';
     (document.getElementById('llmModelInput') as HTMLInputElement).value = 'claude-haiku-4-5-20251001';
+    (document.getElementById('chatDaysInput') as HTMLInputElement).value = '7';
 
     document.getElementById('saveSettingsBtn')!.click();
     await new Promise(r => setTimeout(r, 30));
@@ -124,6 +126,7 @@ describe('SettingsModal', () => {
     expect(setSettingMock).toHaveBeenCalledWith('llm_api_key', 'sk-valid-key');
     expect(setSettingMock).toHaveBeenCalledWith('llm_model', 'claude-haiku-4-5-20251001');
     expect(setSettingMock).toHaveBeenCalledWith('llm_provider', 'anthropic');
+    expect(setSettingMock).toHaveBeenCalledWith('chat_days', '7');
   });
 
   it('save() with missing model name calls alert and does not close modal', async () => {

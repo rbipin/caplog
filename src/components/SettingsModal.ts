@@ -71,7 +71,7 @@ export class SettingsModal {
     const provider = this.providerSelect.value;
     const model = this.modelInput.value.trim();
     const baseUrl = this.baseUrlInput.value.trim();
-    const chatDays = Math.max(1, Math.min(14, parseInt(this.chatDaysInput.value) || 3)).toString();
+    const chatDays = Math.max(1, Math.min(14, parseInt(this.chatDaysInput.value, 10) || 3)).toString();
 
     if (!model) {
       alert('Please enter a model name.');
