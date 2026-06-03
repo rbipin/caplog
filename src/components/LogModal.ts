@@ -1,4 +1,5 @@
 import { escapeHtml } from '../utils.js';
+import { exportMarkdown } from '../export.js';
 import type { TodoItem } from '../types.js';
 
 export class LogModal {
@@ -13,6 +14,7 @@ export class LogModal {
 
     document.getElementById('modalCloseBtn')!.addEventListener('click', () => this.close());
     document.getElementById('modalFooterCloseBtn')!.addEventListener('click', () => this.close());
+    document.getElementById('modalExportBtn')!.addEventListener('click', () => { void exportMarkdown(); });
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.close();
     });

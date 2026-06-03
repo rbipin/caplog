@@ -6,10 +6,15 @@ import type { TodoItem } from '../types.js';
 export class TodoPanel {
   private listEl: HTMLElement;
   private countEl: HTMLElement;
+  private onComplete: (() => void) | null = null;
 
   constructor() {
     this.listEl = document.getElementById('todoList')!;
     this.countEl = document.getElementById('todoCount')!;
+  }
+
+  setOnComplete(cb: () => void): void {
+    this.onComplete = cb;
   }
 
   async load(): Promise<void> {
@@ -33,6 +38,7 @@ export class TodoPanel {
       [new Date().toISOString(), id]
     );
     await this.load();
+    this.onComplete?.();
   }
 
   async completeByText(text: string): Promise<boolean> {
@@ -49,6 +55,7 @@ export class TodoPanel {
   async reopen(id: number): Promise<void> {
     await execute('UPDATE todos SET is_completed = 0, completed_at = NULL WHERE id = ?', [id]);
     await this.load();
+    this.onComplete?.();
   }
 
   private startTodoEdit(el: HTMLElement, textEl: HTMLElement, todo: TodoItem): void {

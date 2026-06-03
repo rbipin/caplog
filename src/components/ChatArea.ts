@@ -7,6 +7,7 @@ import type { Message } from '../types.js';
 export class ChatArea {
   private el: HTMLElement;
   private currentSection: HTMLElement | null = null;
+  private todaySection: HTMLElement | null = null;
   private onSidebarRefresh: (() => void) | null = null;
 
   constructor() {
@@ -34,6 +35,11 @@ export class ChatArea {
     details.appendChild(summary);
     this.el.appendChild(details);
     this.currentSection = details;
+    if (isToday) this.todaySection = details;
+  }
+
+  focusToday(): void {
+    if (this.todaySection) this.currentSection = this.todaySection;
   }
 
   scrollToTop(): void {

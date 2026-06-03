@@ -10,10 +10,11 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 
 - **Log entries** — type anything and it's formatted by AI into a clean structured entry
 - **Todo management** — create, prioritize, and complete tasks with deadline support
-- **Sidebar history** — browse past days with entry previews and completion counts
-- **Log modal** — view all entries for the month in one overlay
+- **Sidebar history** — browse past days with entry previews and per-day completed todo counts
+- **Chat feed** — today's entries at the top; past days shown below as collapsible sections
+- **Log modal** — view all entries for the month in one overlay, with export
 - **AI formatting** — Anthropic or OpenAI-compatible backends (optional; falls back to raw text)
-- **Export** — export all log entries to a Markdown file
+- **Export** — export all log entries to a Markdown file (header button or log modal footer)
 
 ---
 

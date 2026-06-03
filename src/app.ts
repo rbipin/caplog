@@ -27,6 +27,7 @@ class App {
     this.settings = new SettingsModal();
     this.sidebar = new Sidebar((date) => { void this.openDayModal(date); });
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
+    this.todoPanel.setOnComplete(() => this.sidebar.refresh());
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
     void this.init();
@@ -56,7 +57,7 @@ class App {
 
     const dates = dateRows.map((r) => r.date);
     if (!dates.includes(today)) dates.push(today);
-    dates.sort();
+    dates.sort((a, b) => b.localeCompare(a));
 
     for (const date of dates) {
       const isToday = date === today;
@@ -101,6 +102,7 @@ class App {
       }
     }
 
+    this.chatArea.focusToday();
     this.chatArea.scrollToTop();
   }
 
