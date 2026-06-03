@@ -54,8 +54,8 @@ export class TodoPanel {
   private startTodoEdit(el: HTMLElement, textEl: HTMLElement, todo: TodoItem): void {
     if (el.querySelector('textarea.todo-edit-area')) return;
 
-    const original = textEl.textContent ?? '';
-    textEl.textContent = '';
+    const originalHtml = textEl.innerHTML;
+    textEl.innerHTML = '';
 
     const textarea = document.createElement('textarea');
     textarea.className = 'todo-edit-area';
@@ -69,7 +69,7 @@ export class TodoPanel {
 
     textarea.focus();
 
-    const cancel = () => { textEl.textContent = original; };
+    const cancel = () => { textEl.innerHTML = originalHtml; };
 
     actions.querySelector('.todo-edit-cancel')!.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -80,6 +80,9 @@ export class TodoPanel {
       e.stopPropagation();
       const newText = textarea.value.trim();
       if (!newText) return;
+      const saveBtn = e.currentTarget as HTMLButtonElement;
+      saveBtn.textContent = '...';
+      saveBtn.disabled = true;
       await execute('UPDATE todos SET text = ? WHERE id = ?', [newText, todo.id]);
       await this.load();
     });
