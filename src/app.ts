@@ -1,9 +1,9 @@
-import { initDB, query, execute } from './db.js';
+import { initDB, query, execute, getSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
 import { getAdapter } from './llm/factory.js';
 import { escapeHtml, stripHtml } from './utils.js';
-import type { LogEntry } from './types.js';
+import type { LogEntry, TodoItem } from './types.js';
 import { parseCommand } from './commands.js';
 import { LogModal } from './components/LogModal.js';
 import { InputHandler } from './components/InputHandler.js';
@@ -25,7 +25,8 @@ class App {
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
     this.settings = new SettingsModal();
-    this.sidebar = new Sidebar();
+    this.sidebar = new Sidebar((date) => { void this.openDayModal(date); });
+    this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
     void this.init();
@@ -33,7 +34,8 @@ class App {
 
   private async init(): Promise<void> {
     try {
-      await Promise.all([this.todoPanel.load(), this.loadRecentEntries()]);
+      const chatDays = parseInt((await getSetting('chat_days')) ?? '3') || 3;
+      await Promise.all([this.todoPanel.load(), this.loadRecentEntries(chatDays)]);
       await getAdapter();
     } catch (err) {
       console.error('Startup load failed:', err);
@@ -44,51 +46,79 @@ class App {
     }
   }
 
-  private async loadRecentEntries(): Promise<void> {
-    const chatDaysInput = document.getElementById('chatDaysInput') as HTMLInputElement | null;
-    const days = chatDaysInput ? (parseInt(chatDaysInput.value, 10) || 7) : 7;
+  private async loadRecentEntries(days: number): Promise<void> {
+    const today = new Date().toISOString().split('T')[0];
 
-    const dates = await query<{ date: string }>(
-      `SELECT DISTINCT date FROM log_entries ORDER BY date DESC LIMIT ?`,
+    const dateRows = await query<{ date: string }>(
+      'SELECT DISTINCT date FROM log_entries ORDER BY date DESC LIMIT ?',
       [days]
     );
 
-    // Reverse so oldest is first (chronological order)
-    const orderedDates = [...dates].reverse();
+    const dates = dateRows.map((r) => r.date);
+    if (!dates.includes(today)) dates.push(today);
+    dates.sort();
 
-    const today = new Date().toISOString().split('T')[0];
-
-    for (const { date } of orderedDates) {
-      const d = new Date(date + 'T00:00:00');
+    for (const date of dates) {
       const isToday = date === today;
-      const label = isToday
-        ? 'Today'
-        : d.toLocaleString('en-US', { weekday: 'long' });
+      const d = new Date(date + 'T00:00:00');
+      const diffMs = new Date(today).getTime() - d.getTime();
+      const diffDays = Math.round(diffMs / 86400000);
+      const label = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : d.toLocaleString('en-US', { weekday: 'long' });
       const dateSubLabel = d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
 
       this.chatArea.appendDaySection(label, dateSubLabel, isToday);
 
-      const entries = await query<LogEntry>(
-        'SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC',
-        [date]
-      );
+      const [entries, todos] = await Promise.all([
+        query<LogEntry>('SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC', [date]),
+        query<TodoItem>('SELECT * FROM todos WHERE created_at LIKE ? ORDER BY created_at ASC', [date + '%']),
+      ]);
 
-      for (const entry of entries) {
-        const time = new Date(entry.created_at).toLocaleTimeString('en-US', {
-          hour: '2-digit', minute: '2-digit', hour12: false,
-        });
-        this.chatArea.append({
-          time,
-          type: 'log',
-          typeLabel: 'Log entry',
-          content: entry.formatted_text,
-          rawInput: entry.raw_text !== entry.formatted_text ? entry.raw_text : undefined,
-          entryId: entry.id,
-        }, false);
+      type FeedItem =
+        | { created_at: string; kind: 'log'; entry: LogEntry }
+        | { created_at: string; kind: 'todo'; todo: TodoItem };
+
+      const items: FeedItem[] = [
+        ...entries.map((e) => ({ created_at: e.created_at, kind: 'log' as const, entry: e })),
+        ...todos.map((t) => ({ created_at: t.created_at, kind: 'todo' as const, todo: t })),
+      ].sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+      for (const item of items) {
+        if (item.kind === 'log') {
+          const e = item.entry;
+          const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          this.chatArea.append({
+            time, type: 'log', typeLabel: 'Log entry',
+            content: e.formatted_text,
+            rawInput: e.raw_text !== e.formatted_text ? e.raw_text : undefined,
+            entryId: e.id,
+          }, false);
+        } else {
+          const t = item.todo;
+          const time = new Date(t.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          const typeLabel = t.deadline ? `Todo created — due ${t.deadline}` : 'Todo created';
+          this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text) }, false);
+        }
       }
     }
 
     this.chatArea.scrollToTop();
+  }
+
+  private async openDayModal(date: string): Promise<void> {
+    const d = new Date(date + 'T00:00:00');
+    const dateLabel = d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+    const [entries, todos] = await Promise.all([
+      query<LogEntry>('SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC', [date]),
+      query<TodoItem>('SELECT * FROM todos WHERE completed_at LIKE ? ORDER BY completed_at ASC', [date + '%']),
+    ]);
+
+    const items = entries.map((e) => ({
+      text: stripHtml(e.formatted_text),
+      time: new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    }));
+
+    this.modal.openDay(dateLabel, items, todos);
   }
 
   private initHeader(): void {

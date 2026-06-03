@@ -30,7 +30,7 @@ const FULL_DOM = `<div id="app">
   <div id="settingsModal">
     <select id="llmProviderSelect"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option></select>
     <input id="apiKeyInput" /><input id="llmModelInput" /><input id="llmBaseUrlInput" />
-    <div id="baseUrlGroup"></div><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
+    <div id="baseUrlGroup"></div><input id="chatDaysInput" type="number" /><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
   </div>
 </div>`;
 
