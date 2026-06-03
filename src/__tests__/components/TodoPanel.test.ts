@@ -30,7 +30,7 @@ const FULL_DOM = `<div id="app">
   <div id="settingsModal">
     <select id="llmProviderSelect"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option></select>
     <input id="apiKeyInput" /><input id="llmModelInput" /><input id="llmBaseUrlInput" />
-    <div id="baseUrlGroup"></div><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
+    <div id="baseUrlGroup"></div><input id="chatDaysInput" type="number" /><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
   </div>
 </div>`;
 
@@ -158,5 +158,90 @@ describe('TodoPanel', () => {
     const todoList = document.getElementById('todoList')!;
     expect(todoList.innerHTML).not.toContain('✓');
     expect(todoList.querySelector('.todo-item')).not.toBeNull();
+  });
+
+  it('reopen: clicking ✓ on a completed todo calls UPDATE setting is_completed = 0', async () => {
+    const todo = makeTodo({ id: 7, text: 'Was done', is_completed: 1, completed_at: new Date().toISOString() });
+    await triggerReload([todo]);
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+
+    const checkEl = document.querySelector('.todo-item.completed .todo-check') as HTMLElement;
+    expect(checkEl).not.toBeNull();
+    checkEl.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET is_completed = 0, completed_at = NULL WHERE id = ?',
+      [7]
+    );
+  });
+
+  it('clicking todo text opens an edit textarea prefilled with todo text', async () => {
+    const todo = makeTodo({ id: 10, text: 'Edit me' });
+    await triggerReload([todo]);
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    expect(textEl).not.toBeNull();
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const textarea = document.querySelector('.todo-edit-area') as HTMLTextAreaElement;
+    expect(textarea).not.toBeNull();
+    expect(textarea.value).toBe('Edit me');
+  });
+
+  it('todo edit: Cancel restores original text', async () => {
+    const todo = makeTodo({ id: 11, text: 'Original text' });
+    await triggerReload([todo]);
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const cancelBtn = document.querySelector('.todo-edit-cancel') as HTMLButtonElement;
+    cancelBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(document.querySelector('.todo-edit-area')).toBeNull();
+    expect(textEl.textContent).toBe('Original text');
+  });
+
+  it('todo edit: Save calls UPDATE todos SET text', async () => {
+    const todo = makeTodo({ id: 12, text: 'Old text' });
+    await triggerReload([todo]);
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const textarea = document.querySelector('.todo-edit-area') as HTMLTextAreaElement;
+    textarea.value = 'New text';
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+    const saveBtn = document.querySelector('.todo-edit-save') as HTMLButtonElement;
+    saveBtn.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET text = ? WHERE id = ?',
+      ['New text', 12]
+    );
+  });
+
+  it('todos completed 8+ days ago appear in a collapsed Archive section', async () => {
+    const old = new Date();
+    old.setDate(old.getDate() - 8);
+    const archived = makeTodo({ id: 20, text: 'Old done', is_completed: 1, completed_at: old.toISOString() });
+    await triggerReload([archived]);
+
+    const labels = Array.from(document.querySelectorAll('#todoList .todo-section-label, #todoList summary')).map(el => el.textContent ?? '');
+    expect(labels.some(l => l.includes('Archive'))).toBe(true);
+
+    const details = document.querySelector('#todoList details') as HTMLDetailsElement;
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(false);
   });
 });

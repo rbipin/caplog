@@ -39,10 +39,10 @@ Each UI class lives in its own file under `src/components/`. `src/app.ts` is the
 |------|-------|----------------|
 | `src/app.ts` | `App` | Root orchestrator; wires all components, registers DOMContentLoaded |
 | `src/components/InputHandler.ts` | `InputHandler` | Reads textarea, detects command prefix, fires `onSubmit` callback |
-| `src/components/ChatArea.ts` | `ChatArea` | Renders the central chat-style feed of `Message` objects; handles inline edit |
-| `src/components/TodoPanel.ts` | `TodoPanel` | Manages the right-panel `TodoItem` list; sections: Important → Due/Overdue → Upcoming → Open → Completed |
+| `src/components/ChatArea.ts` | `ChatArea` | Renders the central chat-style feed; today's section is at the top, past days are collapsible below. Tracks `todaySection` separately — call `focusToday()` after loading so new entries always land in today's section. |
+| `src/components/TodoPanel.ts` | `TodoPanel` | Manages the right-panel `TodoItem` list; sections: Important → Due/Overdue → Upcoming → Open → Completed. Call `setOnComplete(cb)` to receive a callback whenever a todo is completed or reopened (used to refresh the sidebar count). |
 | `src/components/Sidebar.ts` | `Sidebar` | Left panel; lists past `DayEntry` days with preview and stats |
-| `src/components/LogModal.ts` | `LogModal` | Overlay modal showing all log entries for the month |
+| `src/components/LogModal.ts` | `LogModal` | Overlay modal showing all log entries for the month; footer has an Export .md button wired to `exportMarkdown()` |
 | `src/components/SettingsModal.ts` | `SettingsModal` | LLM provider/key/model configuration overlay |
 
 **Command parsing** is handled in `src/commands.ts` via `parseCommand()`. Plain text → `log`. Slash commands: `/todo`, `/done`, `/important`, `/by`.

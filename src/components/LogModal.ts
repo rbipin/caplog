@@ -1,3 +1,7 @@
+import { escapeHtml } from '../utils.js';
+import { exportMarkdown } from '../export.js';
+import type { TodoItem } from '../types.js';
+
 export class LogModal {
   private overlay: HTMLElement;
   private subtitle: HTMLElement;
@@ -10,6 +14,7 @@ export class LogModal {
 
     document.getElementById('modalCloseBtn')!.addEventListener('click', () => this.close());
     document.getElementById('modalFooterCloseBtn')!.addEventListener('click', () => this.close());
+    document.getElementById('modalExportBtn')!.addEventListener('click', () => { void exportMarkdown(); });
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.close();
     });
@@ -29,6 +34,31 @@ export class LogModal {
         `).join('')}
       </div>
     `).join('');
+    this.overlay.classList.add('visible');
+  }
+
+  openDay(dateLabel: string, entries: { text: string; time: string }[], todos: TodoItem[]): void {
+    this.subtitle.textContent = dateLabel;
+
+    const entriesHtml = entries.length > 0 ? `
+      <div class="log-view-entry">
+        <div class="log-view-date">Log Entries</div>
+        ${entries.map((item) => `
+          <div class="log-view-item">${item.text} <span class="log-view-time">${item.time}</span></div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    const todosHtml = todos.length > 0 ? `
+      <div class="log-view-entry">
+        <div class="log-view-date">Completed Todos</div>
+        ${todos.map((t) => `
+          <div class="log-view-item">✓ ${escapeHtml(t.text)}</div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    this.body.innerHTML = entriesHtml + todosHtml;
     this.overlay.classList.add('visible');
   }
 

@@ -30,7 +30,7 @@ const FULL_DOM = `<div id="app">
   <div id="settingsModal">
     <select id="llmProviderSelect"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option></select>
     <input id="apiKeyInput" /><input id="llmModelInput" /><input id="llmBaseUrlInput" />
-    <div id="baseUrlGroup"></div><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
+    <div id="baseUrlGroup"></div><input id="chatDaysInput" type="number" /><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
   </div>
 </div>`;
 
@@ -52,9 +52,12 @@ describe('ChatArea', () => {
   beforeAll(async () => {
     document.body.innerHTML = FULL_DOM;
 
-    // Return two log entries during startup loadTodayEntries()
+    // Return two log entries during startup loadRecentEntries()
     queryMock.mockImplementation(async (sql: string) => {
-      if (sql.includes('log_entries') && sql.includes('date = ?')) {
+      if (sql.includes('DISTINCT date')) {
+        return [{ date: '2026-06-01' }];
+      }
+      if (sql.includes('log_entries') && sql.includes('WHERE date = ?')) {
         return [
           makeEntry({ id: 10, raw_text: 'entry one', formatted_text: '<ul><li>entry one</li></ul>' }),
           makeEntry({ id: 11, raw_text: 'entry two', formatted_text: '<ul><li>entry two</li></ul>' }),
@@ -135,5 +138,23 @@ describe('ChatArea', () => {
     cancelBtn.click();
 
     expect(content.innerHTML).toBe(originalHtml);
+  });
+
+  it('delete button: clicking ✕ calls DELETE FROM log_entries and removes the message', async () => {
+    queryMock.mockResolvedValueOnce([{ id: 77 }]); // SELECT id after insert
+    await submitLog('Entry to delete');
+
+    const msgs = document.getElementById('chatArea')!.querySelectorAll('.msg');
+    const last = msgs[msgs.length - 1] as HTMLElement;
+    const deleteBtn = last.querySelector('.msg-delete-btn') as HTMLElement;
+    expect(deleteBtn).not.toBeNull();
+
+    vi.clearAllMocks();
+    executeMock.mockResolvedValue(undefined);
+    deleteBtn.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith('DELETE FROM log_entries WHERE id = ?', [77]);
+    expect(document.getElementById('chatArea')!.contains(last)).toBe(false);
   });
 });

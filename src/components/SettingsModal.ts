@@ -7,6 +7,7 @@ export class SettingsModal {
   private modelInput: HTMLInputElement;
   private baseUrlInput: HTMLInputElement;
   private baseUrlGroup: HTMLElement;
+  private chatDaysInput: HTMLInputElement;
 
   constructor() {
     this.overlay = document.getElementById('settingsModal')!;
@@ -15,6 +16,7 @@ export class SettingsModal {
     this.modelInput = document.getElementById('llmModelInput') as HTMLInputElement;
     this.baseUrlInput = document.getElementById('llmBaseUrlInput') as HTMLInputElement;
     this.baseUrlGroup = document.getElementById('baseUrlGroup')!;
+    this.chatDaysInput = document.getElementById('chatDaysInput') as HTMLInputElement;
 
     document.getElementById('settingsCloseBtn')!.addEventListener('click', () => this.close());
     this.overlay.addEventListener('click', (e) => { if (e.target === this.overlay) this.close(); });
@@ -30,17 +32,19 @@ export class SettingsModal {
   }
 
   async open(): Promise<void> {
-    const [provider, apiKey, model, baseUrl] = await Promise.all([
+    const [provider, apiKey, model, baseUrl, chatDays] = await Promise.all([
       getSetting('llm_provider'),
       getSetting('llm_api_key'),
       getSetting('llm_model'),
       getSetting('llm_base_url'),
+      getSetting('chat_days'),
     ]);
 
     this.providerSelect.value = provider ?? 'anthropic';
     this.apiKeyInput.value = apiKey ?? '';
     this.modelInput.value = model ?? '';
     this.baseUrlInput.value = baseUrl ?? '';
+    this.chatDaysInput.value = chatDays ?? '3';
     this.syncBaseUrlVisibility();
     this.overlay.classList.add('visible');
   }
@@ -58,6 +62,7 @@ export class SettingsModal {
         execute('DELETE FROM settings WHERE key = ?', ['llm_api_key']),
         execute('DELETE FROM settings WHERE key = ?', ['llm_model']),
         execute('DELETE FROM settings WHERE key = ?', ['llm_base_url']),
+        execute('DELETE FROM settings WHERE key = ?', ['chat_days']),
       ]);
       this.close();
       return;
@@ -66,6 +71,7 @@ export class SettingsModal {
     const provider = this.providerSelect.value;
     const model = this.modelInput.value.trim();
     const baseUrl = this.baseUrlInput.value.trim();
+    const chatDays = Math.max(1, Math.min(14, parseInt(this.chatDaysInput.value, 10) || 3)).toString();
 
     if (!model) {
       alert('Please enter a model name.');
@@ -76,6 +82,7 @@ export class SettingsModal {
     await setSetting('llm_api_key', apiKey);
     await setSetting('llm_model', model);
     await setSetting('llm_base_url', provider === 'openai' ? baseUrl : '');
+    await setSetting('chat_days', chatDays);
 
     this.close();
   }

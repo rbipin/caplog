@@ -68,7 +68,7 @@
         </div>
         <div class="modal-body" id="modalBody"></div>
         <div class="modal-footer">
-          <button class="btn-ghost">↗ Export .md</button>
+          <button class="btn-ghost" id="modalExportBtn">↗ Export .md</button>
           <button class="btn-ghost" id="modalFooterCloseBtn">Close</button>
         </div>
       </div>
@@ -115,6 +115,9 @@
             />
             <p class="settings-hint">For Ollama use http://localhost:11434</p>
           </div>
+
+          <label class="settings-label">Days to show in chat</label>
+          <input type="number" id="chatDaysInput" class="settings-input" min="1" max="14" placeholder="3" />
 
           <p class="settings-hint">Used for AI log formatting. Stored locally, never sent anywhere else.</p>
           <button id="saveSettingsBtn" class="settings-save-btn">Save</button>

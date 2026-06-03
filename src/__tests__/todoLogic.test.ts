@@ -50,3 +50,38 @@ describe('getTodoSections', () => {
     expect(open.filter(pastDue)).toBe(false);
   });
 });
+
+describe('getTodoSections — archive split', () => {
+  it('recently completed todo (today) appears in Completed section, not Archive', () => {
+    const sections = getTodoSections();
+    const completed = sections.find(s => s.label === 'Completed')!;
+    const archive = sections.find(s => s.label === 'Archive')!;
+    const recent = makeTodo({ is_completed: 1, completed_at: new Date().toISOString() });
+    expect(completed.filter(recent)).toBe(true);
+    expect(archive.filter(recent)).toBe(false);
+  });
+
+  it('todo completed 8 days ago appears in Archive section, not Completed', () => {
+    const sections = getTodoSections();
+    const completed = sections.find(s => s.label === 'Completed')!;
+    const archive = sections.find(s => s.label === 'Archive')!;
+    const old = new Date();
+    old.setDate(old.getDate() - 8);
+    const oldTodo = makeTodo({ is_completed: 1, completed_at: old.toISOString() });
+    expect(completed.filter(oldTodo)).toBe(false);
+    expect(archive.filter(oldTodo)).toBe(true);
+  });
+
+  it('Archive section has collapsed: true', () => {
+    const sections = getTodoSections();
+    const archive = sections.find(s => s.label === 'Archive')!;
+    expect(archive.collapsed).toBe(true);
+  });
+
+  it('completed todo with null completed_at falls into Archive', () => {
+    const sections = getTodoSections();
+    const archive = sections.find(s => s.label === 'Archive')!;
+    const noDate = makeTodo({ is_completed: 1, completed_at: null });
+    expect(archive.filter(noDate)).toBe(true);
+  });
+});

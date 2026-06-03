@@ -6,10 +6,15 @@ import type { TodoItem } from '../types.js';
 export class TodoPanel {
   private listEl: HTMLElement;
   private countEl: HTMLElement;
+  private onComplete: (() => void) | null = null;
 
   constructor() {
     this.listEl = document.getElementById('todoList')!;
     this.countEl = document.getElementById('todoCount')!;
+  }
+
+  setOnComplete(cb: () => void): void {
+    this.onComplete = cb;
   }
 
   async load(): Promise<void> {
@@ -33,6 +38,7 @@ export class TodoPanel {
       [new Date().toISOString(), id]
     );
     await this.load();
+    this.onComplete?.();
   }
 
   async completeByText(text: string): Promise<boolean> {
@@ -44,6 +50,57 @@ export class TodoPanel {
     if (rows.length === 0) return false;
     await this.complete(rows[0].id);
     return true;
+  }
+
+  async reopen(id: number): Promise<void> {
+    await execute('UPDATE todos SET is_completed = 0, completed_at = NULL WHERE id = ?', [id]);
+    await this.load();
+    this.onComplete?.();
+  }
+
+  private startTodoEdit(el: HTMLElement, textEl: HTMLElement, todo: TodoItem): void {
+    if (el.querySelector('textarea.todo-edit-area')) return;
+
+    const originalHtml = textEl.innerHTML;
+    textEl.innerHTML = '';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'todo-edit-area';
+    textarea.value = todo.text;
+    textEl.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.className = 'todo-edit-actions';
+    actions.innerHTML = '<button class="todo-edit-save">Save</button><button class="todo-edit-cancel">Cancel</button>';
+    textEl.appendChild(actions);
+
+    textarea.focus();
+
+    const cancel = () => { textEl.innerHTML = originalHtml; };
+
+    actions.querySelector('.todo-edit-cancel')!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cancel();
+    });
+
+    actions.querySelector('.todo-edit-save')!.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const newText = textarea.value.trim();
+      if (!newText) return;
+      const saveBtn = e.currentTarget as HTMLButtonElement;
+      saveBtn.textContent = '...';
+      saveBtn.disabled = true;
+      await execute('UPDATE todos SET text = ? WHERE id = ?', [newText, todo.id]);
+      await this.load();
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        (actions.querySelector('.todo-edit-save') as HTMLButtonElement).click();
+      }
+      if (e.key === 'Escape') cancel();
+    });
   }
 
   async delete(id: number): Promise<void> {
@@ -84,8 +141,25 @@ export class TodoPanel {
     if (status !== 'completed') {
       el.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.todo-delete-btn')) return;
+        if ((e.target as HTMLElement).closest('.todo-text')) return;
         this.complete(todo.id);
       });
+
+      const textEl = el.querySelector('.todo-text') as HTMLElement;
+      textEl.style.cursor = 'text';
+      textEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.startTodoEdit(el, textEl, todo);
+      });
+    } else {
+      const checkEl = el.querySelector<HTMLElement>('.todo-check');
+      if (checkEl) {
+        checkEl.style.cursor = 'pointer';
+        checkEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.reopen(todo.id).catch((err) => console.error('reopen failed', err));
+        });
+      }
     }
 
     el.querySelector('.todo-delete-btn')!.addEventListener('click', (e) => {
@@ -97,6 +171,7 @@ export class TodoPanel {
   }
 
   private render(todos: TodoItem[]): void {
+    const archiveWasOpen = (this.listEl.querySelector('details.todo-archive') as HTMLDetailsElement | null)?.open ?? false;
     this.listEl.innerHTML = '';
 
     const sections = getTodoSections();
@@ -105,13 +180,22 @@ export class TodoPanel {
       const items = todos.filter(section.filter);
       if (items.length === 0) continue;
 
-      const label = document.createElement('div');
-      label.className = 'todo-section-label';
-      label.textContent = section.label;
-      this.listEl.appendChild(label);
-
-      for (const item of items) {
-        this.listEl.appendChild(this.renderItem(item));
+      if (section.collapsed) {
+        const details = document.createElement('details');
+        details.className = 'todo-archive';
+        if (archiveWasOpen) details.open = true;
+        const summary = document.createElement('summary');
+        summary.className = 'todo-section-label todo-archive-summary';
+        summary.textContent = `${section.label} (${items.length})`;
+        details.appendChild(summary);
+        for (const item of items) details.appendChild(this.renderItem(item));
+        this.listEl.appendChild(details);
+      } else {
+        const label = document.createElement('div');
+        label.className = 'todo-section-label';
+        label.textContent = section.label;
+        this.listEl.appendChild(label);
+        for (const item of items) this.listEl.appendChild(this.renderItem(item));
       }
     }
 
