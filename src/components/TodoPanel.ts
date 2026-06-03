@@ -93,12 +93,14 @@ export class TodoPanel {
         this.complete(todo.id);
       });
     } else {
-      const checkEl = el.querySelector('.todo-check') as HTMLElement;
-      checkEl.style.cursor = 'pointer';
-      checkEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        void this.reopen(todo.id);
-      });
+      const checkEl = el.querySelector<HTMLElement>('.todo-check');
+      if (checkEl) {
+        checkEl.style.cursor = 'pointer';
+        checkEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.reopen(todo.id).catch((err) => console.error('reopen failed', err));
+        });
+      }
     }
 
     el.querySelector('.todo-delete-btn')!.addEventListener('click', (e) => {
