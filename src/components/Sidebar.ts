@@ -6,7 +6,7 @@ export class Sidebar {
   private monthLabel: HTMLElement;
   private dayList: HTMLElement;
 
-  constructor() {
+  constructor(private onDaySelect: (date: string) => void) {
     this.monthLabel = document.getElementById('sidebarMonthLabel')!;
     this.dayList = document.getElementById('dayList')!;
     const now = new Date();
@@ -60,6 +60,7 @@ export class Sidebar {
     el.addEventListener('click', () => {
       document.querySelectorAll('.day-entry').forEach((e) => e.classList.remove('active'));
       el.classList.add('active');
+      this.onDaySelect(s.date);
     });
     return el;
   }
