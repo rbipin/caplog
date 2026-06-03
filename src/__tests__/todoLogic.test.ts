@@ -75,7 +75,7 @@ describe('getTodoSections — archive split', () => {
   it('Archive section has collapsed: true', () => {
     const sections = getTodoSections();
     const archive = sections.find(s => s.label === 'Archive')!;
-    expect((archive as any).collapsed).toBe(true);
+    expect(archive.collapsed).toBe(true);
   });
 
   it('completed todo with null completed_at falls into Archive', () => {
