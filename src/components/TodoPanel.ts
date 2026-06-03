@@ -164,6 +164,7 @@ export class TodoPanel {
   }
 
   private render(todos: TodoItem[]): void {
+    const archiveWasOpen = (this.listEl.querySelector('details.todo-archive') as HTMLDetailsElement | null)?.open ?? false;
     this.listEl.innerHTML = '';
 
     const sections = getTodoSections();
@@ -175,6 +176,7 @@ export class TodoPanel {
       if (section.collapsed) {
         const details = document.createElement('details');
         details.className = 'todo-archive';
+        if (archiveWasOpen) details.open = true;
         const summary = document.createElement('summary');
         summary.className = 'todo-section-label todo-archive-summary';
         summary.textContent = `${section.label} (${items.length})`;
