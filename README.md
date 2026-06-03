@@ -4,6 +4,8 @@ A minimal, distraction-free desktop journaling and task-tracking app. Log what y
 
 Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 
+![DayLog screenshot](docs/assets/daylog-screen.png)
+
 ---
 
 ## Features
@@ -29,7 +31,7 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 │  │ Day list │   │  Log feed        │   │ Important   │ │
 │  │ previews │   │  (chat-style)    │   │ Due/Overdue │ │
 │  │ stats    │   │                  │   │ Open        │ │
-│  │          │   │  ┌────────────┐  │   │ Completed   │ │
+│  │          │   │  ┌────────────┐  │   │ Comp. today │ │
 │  │          │   │  │InputHandler│  │   │             │ │
 │  │          │   │  │ (textarea) │  │   │             │ │
 │  └──────────┘   │  └────────────┘  │   └─────────────┘ │
