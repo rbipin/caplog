@@ -46,6 +46,11 @@ export class TodoPanel {
     return true;
   }
 
+  async reopen(id: number): Promise<void> {
+    await execute('UPDATE todos SET is_completed = 0, completed_at = NULL WHERE id = ?', [id]);
+    await this.load();
+  }
+
   async delete(id: number): Promise<void> {
     await execute('DELETE FROM todos WHERE id = ?', [id]);
     await this.load();
@@ -84,7 +89,15 @@ export class TodoPanel {
     if (status !== 'completed') {
       el.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.todo-delete-btn')) return;
+        if ((e.target as HTMLElement).closest('.todo-text')) return;
         this.complete(todo.id);
+      });
+    } else {
+      const checkEl = el.querySelector('.todo-check') as HTMLElement;
+      checkEl.style.cursor = 'pointer';
+      checkEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        void this.reopen(todo.id);
       });
     }
 

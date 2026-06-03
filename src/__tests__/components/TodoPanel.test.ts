@@ -159,4 +159,22 @@ describe('TodoPanel', () => {
     expect(todoList.innerHTML).not.toContain('✓');
     expect(todoList.querySelector('.todo-item')).not.toBeNull();
   });
+
+  it('reopen: clicking ✓ on a completed todo calls UPDATE setting is_completed = 0', async () => {
+    const todo = makeTodo({ id: 7, text: 'Was done', is_completed: 1, completed_at: new Date().toISOString() });
+    await triggerReload([todo]);
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+
+    const checkEl = document.querySelector('.todo-item.completed .todo-check') as HTMLElement;
+    expect(checkEl).not.toBeNull();
+    checkEl.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET is_completed = 0, completed_at = NULL WHERE id = ?',
+      [7]
+    );
+  });
 });
