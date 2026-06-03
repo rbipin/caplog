@@ -33,7 +33,7 @@ class App {
 
   private async init(): Promise<void> {
     try {
-      await Promise.all([this.todoPanel.load(), this.loadTodayEntries()]);
+      await Promise.all([this.todoPanel.load(), this.loadRecentEntries()]);
       await getAdapter();
     } catch (err) {
       console.error('Startup load failed:', err);
@@ -44,13 +44,51 @@ class App {
     }
   }
 
-  private async loadTodayEntries(): Promise<void> {
-    const today = new Date().toISOString().split('T')[0];
-    const entries = await query<LogEntry>(
-      'SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC',
-      [today]
+  private async loadRecentEntries(): Promise<void> {
+    const chatDaysInput = document.getElementById('chatDaysInput') as HTMLInputElement | null;
+    const days = chatDaysInput ? (parseInt(chatDaysInput.value, 10) || 7) : 7;
+
+    const dates = await query<{ date: string }>(
+      `SELECT DISTINCT date FROM log_entries ORDER BY date DESC LIMIT ?`,
+      [days]
     );
-    this.chatArea.loadEntries(entries);
+
+    // Reverse so oldest is first (chronological order)
+    const orderedDates = [...dates].reverse();
+
+    const today = new Date().toISOString().split('T')[0];
+
+    for (const { date } of orderedDates) {
+      const d = new Date(date + 'T00:00:00');
+      const isToday = date === today;
+      const label = isToday
+        ? 'Today'
+        : d.toLocaleString('en-US', { weekday: 'long' });
+      const dateSubLabel = d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+
+      this.chatArea.appendDaySection(label, dateSubLabel, isToday);
+
+      const entries = await query<LogEntry>(
+        'SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC',
+        [date]
+      );
+
+      for (const entry of entries) {
+        const time = new Date(entry.created_at).toLocaleTimeString('en-US', {
+          hour: '2-digit', minute: '2-digit', hour12: false,
+        });
+        this.chatArea.append({
+          time,
+          type: 'log',
+          typeLabel: 'Log entry',
+          content: entry.formatted_text,
+          rawInput: entry.raw_text !== entry.formatted_text ? entry.raw_text : undefined,
+          entryId: entry.id,
+        }, false);
+      }
+    }
+
+    this.chatArea.scrollToTop();
   }
 
   private initHeader(): void {

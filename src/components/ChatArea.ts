@@ -6,40 +6,41 @@ import type { Message, LogEntry } from '../types.js';
 
 export class ChatArea {
   private el: HTMLElement;
+  private currentSection: HTMLElement | null = null;
+  private onSidebarRefresh: (() => void) | null = null;
 
   constructor() {
     this.el = document.getElementById('chatArea')!;
-    this.appendDivider('Today');
   }
 
-  loadEntries(entries: LogEntry[]): void {
-    for (const entry of entries) {
-      const time = new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-      this.append({
-        time,
-        type: 'log',
-        typeLabel: 'Log entry',
-        content: entry.formatted_text,
-        rawInput: entry.raw_text !== entry.formatted_text ? entry.raw_text : undefined,
-        entryId: entry.id,
-      });
-    }
+  setSidebarRefresh(fn: () => void): void {
+    this.onSidebarRefresh = fn;
   }
 
-  appendDivider(label: string): void {
-    const now = new Date();
-    const shortDate = now.toLocaleString('en-US', { month: 'short', day: 'numeric' });
-    const el = document.createElement('div');
-    el.className = 'day-divider';
-    el.innerHTML = `
+  appendDaySection(label: string, dateSubLabel: string, isToday: boolean): void {
+    const details = document.createElement('details');
+    details.className = 'day-section';
+    if (isToday) details.open = true;
+
+    const summary = document.createElement('summary');
+    const divider = document.createElement('div');
+    divider.className = 'day-divider';
+    divider.innerHTML = `
       <div class="day-divider-line"></div>
-      <div class="day-divider-label">${label} — ${shortDate}</div>
+      <div class="day-divider-label">${label} — ${dateSubLabel}</div>
       <div class="day-divider-line"></div>
     `;
-    this.el.appendChild(el);
+    summary.appendChild(divider);
+    details.appendChild(summary);
+    this.el.appendChild(details);
+    this.currentSection = details;
   }
 
-  append(msg: Message): void {
+  scrollToTop(): void {
+    this.el.scrollTop = 0;
+  }
+
+  append(msg: Message, scroll = true): void {
     const rawHtml = msg.rawInput
       ? `<div class="msg-raw"><div class="msg-raw-label">Original input</div>${escapeHtml(msg.rawInput)}</div>`
       : '';
@@ -60,10 +61,23 @@ export class ChatArea {
       contentEl.addEventListener('click', () => {
         this.startEdit(el, contentEl, msg);
       });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'msg-delete-btn';
+      deleteBtn.title = 'Delete entry';
+      deleteBtn.textContent = '✕';
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await execute('DELETE FROM log_entries WHERE id = ?', [msg.entryId!]);
+        el.remove();
+        this.onSidebarRefresh?.();
+      });
+      el.appendChild(deleteBtn);
     }
 
-    this.el.appendChild(el);
-    this.el.scrollTop = this.el.scrollHeight;
+    const container = this.currentSection ?? this.el;
+    container.appendChild(el);
+    if (scroll) this.el.scrollTop = this.el.scrollHeight;
   }
 
   private startEdit(msgEl: HTMLElement, contentEl: HTMLElement, msg: Message): void {
