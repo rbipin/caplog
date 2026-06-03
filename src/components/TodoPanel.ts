@@ -51,6 +51,48 @@ export class TodoPanel {
     await this.load();
   }
 
+  private startTodoEdit(el: HTMLElement, textEl: HTMLElement, todo: TodoItem): void {
+    if (el.querySelector('textarea.todo-edit-area')) return;
+
+    const original = textEl.textContent ?? '';
+    textEl.textContent = '';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'todo-edit-area';
+    textarea.value = todo.text;
+    textEl.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.className = 'todo-edit-actions';
+    actions.innerHTML = '<button class="todo-edit-save">Save</button><button class="todo-edit-cancel">Cancel</button>';
+    textEl.appendChild(actions);
+
+    textarea.focus();
+
+    const cancel = () => { textEl.textContent = original; };
+
+    actions.querySelector('.todo-edit-cancel')!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cancel();
+    });
+
+    actions.querySelector('.todo-edit-save')!.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const newText = textarea.value.trim();
+      if (!newText) return;
+      await execute('UPDATE todos SET text = ? WHERE id = ?', [newText, todo.id]);
+      await this.load();
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        (actions.querySelector('.todo-edit-save') as HTMLButtonElement).click();
+      }
+      if (e.key === 'Escape') cancel();
+    });
+  }
+
   async delete(id: number): Promise<void> {
     await execute('DELETE FROM todos WHERE id = ?', [id]);
     await this.load();
@@ -91,6 +133,13 @@ export class TodoPanel {
         if ((e.target as HTMLElement).closest('.todo-delete-btn')) return;
         if ((e.target as HTMLElement).closest('.todo-text')) return;
         this.complete(todo.id);
+      });
+
+      const textEl = el.querySelector('.todo-text') as HTMLElement;
+      textEl.style.cursor = 'text';
+      textEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.startTodoEdit(el, textEl, todo);
       });
     } else {
       const checkEl = el.querySelector<HTMLElement>('.todo-check');

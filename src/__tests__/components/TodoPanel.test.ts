@@ -177,4 +177,57 @@ describe('TodoPanel', () => {
       [7]
     );
   });
+
+  it('clicking todo text opens an edit textarea prefilled with todo text', async () => {
+    const todo = makeTodo({ id: 10, text: 'Edit me' });
+    await triggerReload([todo]);
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    expect(textEl).not.toBeNull();
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const textarea = document.querySelector('.todo-edit-area') as HTMLTextAreaElement;
+    expect(textarea).not.toBeNull();
+    expect(textarea.value).toBe('Edit me');
+  });
+
+  it('todo edit: Cancel restores original text', async () => {
+    const todo = makeTodo({ id: 11, text: 'Original text' });
+    await triggerReload([todo]);
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const cancelBtn = document.querySelector('.todo-edit-cancel') as HTMLButtonElement;
+    cancelBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(document.querySelector('.todo-edit-area')).toBeNull();
+    expect(textEl.textContent).toBe('Original text');
+  });
+
+  it('todo edit: Save calls UPDATE todos SET text', async () => {
+    const todo = makeTodo({ id: 12, text: 'Old text' });
+    await triggerReload([todo]);
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const textarea = document.querySelector('.todo-edit-area') as HTMLTextAreaElement;
+    textarea.value = 'New text';
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+    const saveBtn = document.querySelector('.todo-edit-save') as HTMLButtonElement;
+    saveBtn.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET text = ? WHERE id = ?',
+      ['New text', 12]
+    );
+  });
 });
