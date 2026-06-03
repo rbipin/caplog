@@ -172,13 +172,21 @@ export class TodoPanel {
       const items = todos.filter(section.filter);
       if (items.length === 0) continue;
 
-      const label = document.createElement('div');
-      label.className = 'todo-section-label';
-      label.textContent = section.label;
-      this.listEl.appendChild(label);
-
-      for (const item of items) {
-        this.listEl.appendChild(this.renderItem(item));
+      if (section.collapsed) {
+        const details = document.createElement('details');
+        details.className = 'todo-archive';
+        const summary = document.createElement('summary');
+        summary.className = 'todo-section-label todo-archive-summary';
+        summary.textContent = `${section.label} (${items.length})`;
+        details.appendChild(summary);
+        for (const item of items) details.appendChild(this.renderItem(item));
+        this.listEl.appendChild(details);
+      } else {
+        const label = document.createElement('div');
+        label.className = 'todo-section-label';
+        label.textContent = section.label;
+        this.listEl.appendChild(label);
+        for (const item of items) this.listEl.appendChild(this.renderItem(item));
       }
     }
 

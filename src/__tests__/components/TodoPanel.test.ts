@@ -230,4 +230,18 @@ describe('TodoPanel', () => {
       ['New text', 12]
     );
   });
+
+  it('todos completed 8+ days ago appear in a collapsed Archive section', async () => {
+    const old = new Date();
+    old.setDate(old.getDate() - 8);
+    const archived = makeTodo({ id: 20, text: 'Old done', is_completed: 1, completed_at: old.toISOString() });
+    await triggerReload([archived]);
+
+    const labels = Array.from(document.querySelectorAll('#todoList .todo-section-label, #todoList summary')).map(el => el.textContent ?? '');
+    expect(labels.some(l => l.includes('Archive'))).toBe(true);
+
+    const details = document.querySelector('#todoList details') as HTMLDetailsElement;
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(false);
+  });
 });
