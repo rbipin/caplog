@@ -30,7 +30,7 @@ const FULL_DOM = `<div id="app">
   <div id="settingsModal">
     <select id="llmProviderSelect"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option></select>
     <input id="apiKeyInput" /><input id="llmModelInput" /><input id="llmBaseUrlInput" />
-    <div id="baseUrlGroup"></div><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
+    <div id="baseUrlGroup"></div><input id="chatDaysInput" type="number" /><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
   </div>
 </div>`;
 
@@ -70,6 +70,7 @@ describe('SettingsModal', () => {
       if (key === 'llm_api_key') return 'sk-test-key';
       if (key === 'llm_model') return 'claude-haiku-4-5-20251001';
       if (key === 'llm_base_url') return '';
+      if (key === 'chat_days') return '3';
       return null;
     });
 
@@ -109,7 +110,7 @@ describe('SettingsModal', () => {
     await new Promise(r => setTimeout(r, 30));
 
     const deleteCalls = executeMock.mock.calls.filter(([sql]) => String(sql).includes('DELETE FROM settings'));
-    expect(deleteCalls.length).toBe(4);
+    expect(deleteCalls.length).toBe(5);
   });
 
   it('save() with valid inputs writes provider, key, model, baseUrl to db', async () => {
