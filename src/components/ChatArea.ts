@@ -2,7 +2,7 @@ import { execute } from '../db.js';
 import { formatLogEntry } from '../ai.js';
 import { getAdapter } from '../llm/factory.js';
 import { escapeHtml } from '../utils.js';
-import type { Message, LogEntry } from '../types.js';
+import type { Message } from '../types.js';
 
 export class ChatArea {
   private el: HTMLElement;
