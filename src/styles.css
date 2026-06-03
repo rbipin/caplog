@@ -835,3 +835,101 @@ html, body {
   outline: none;
   border-color: var(--accent);
 }
+
+/* ── Day section collapsible ── */
+details.day-section { width: 100%; }
+details.day-section > summary {
+  cursor: pointer;
+  list-style: none;
+  display: block;
+}
+details.day-section > summary::-webkit-details-marker { display: none; }
+
+details.day-section > summary .day-divider-label::before {
+  content: '▶ ';
+  font-size: 0.65em;
+  opacity: 0.5;
+  margin-right: 2px;
+}
+details.day-section[open] > summary .day-divider-label::before {
+  content: '▼ ';
+}
+
+/* ── Log entry delete button ── */
+.msg { position: relative; }
+.msg-delete-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1;
+}
+.msg-delete-btn:hover { color: var(--red); background: var(--red-dim); }
+.msg:hover .msg-delete-btn { display: block; }
+
+/* ── Todo inline edit ── */
+.todo-edit-area {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border-hover);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  resize: none;
+  min-height: 2.5rem;
+}
+.todo-edit-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+.todo-edit-save, .todo-edit-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 2px 8px;
+}
+.todo-edit-save:hover { color: var(--accent); border-color: var(--accent); }
+.todo-edit-cancel:hover { color: var(--text); border-color: var(--border-hover); }
+
+/* ── Todo archive section ── */
+details.todo-archive { width: 100%; margin-top: 0.25rem; }
+details.todo-archive > summary.todo-archive-summary {
+  cursor: pointer;
+  list-style: none;
+  display: block;
+}
+details.todo-archive > summary::-webkit-details-marker { display: none; }
+details.todo-archive > summary.todo-archive-summary {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 0 4px;
+}
+details.todo-archive > summary.todo-archive-summary::before {
+  content: '▶ ';
+  font-size: 0.6em;
+  opacity: 0.6;
+}
+details.todo-archive[open] > summary.todo-archive-summary::before {
+  content: '▼ ';
+}
+
+/* ── Completed todo checkmark hover ── */
+.todo-item.completed .todo-check:hover {
+  opacity: 0.6;
+}
