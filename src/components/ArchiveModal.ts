@@ -1,0 +1,250 @@
+import { query } from '../db.js';
+
+interface DayData {
+  date: string;
+  entryCount: number;
+  doneCount: number;
+}
+
+interface WeekData {
+  weekStart: string;
+  days: DayData[];
+  totalEntries: number;
+  totalDone: number;
+}
+
+export function getWeekStart(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+
+export function buildWeeks(
+  entryCounts: Record<string, number>,
+  doneCounts: Record<string, number>,
+  year: number
+): Map<string, WeekData> {
+  const weeks = new Map<string, WeekData>();
+
+  for (const [date, entryCount] of Object.entries(entryCounts)) {
+    const weekStart = getWeekStart(date);
+    if (!weeks.has(weekStart)) {
+      weeks.set(weekStart, { weekStart, days: [], totalEntries: 0, totalDone: 0 });
+    }
+    const week = weeks.get(weekStart)!;
+    week.totalEntries += entryCount;
+    week.totalDone += doneCounts[date] ?? 0;
+    week.days.push({ date, entryCount, doneCount: doneCounts[date] ?? 0 });
+  }
+
+  // Fill Mon–Fri skeletons for days with no entries (within the given year only)
+  for (const week of weeks.values()) {
+    const existing = new Set(week.days.map(d => d.date));
+    const mon = new Date(week.weekStart + 'T00:00:00');
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(mon);
+      d.setDate(mon.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      if (!existing.has(dateStr) && d.getFullYear() === year) {
+        week.days.push({ date: dateStr, entryCount: 0, doneCount: 0 });
+      }
+    }
+    week.days.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  return weeks;
+}
+
+export class ArchiveModal {
+  private overlay: HTMLElement;
+  private body: HTMLElement;
+  private searchInput: HTMLInputElement;
+  private yearLabel: HTMLElement;
+  private currentYear: number;
+  private today: string;
+  private searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(private onDaySelect: (date: string) => void) {
+    this.overlay = document.getElementById('archiveModal')!;
+    this.body = document.getElementById('archiveBody')!;
+    this.searchInput = document.getElementById('archiveSearchInput') as HTMLInputElement;
+    this.yearLabel = document.getElementById('archiveYearLabel')!;
+    this.currentYear = new Date().getFullYear();
+    this.today = new Date().toISOString().split('T')[0];
+
+    document.getElementById('archiveCloseBtn')!.addEventListener('click', () => this.hide());
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.overlay.classList.contains('visible')) this.hide();
+    });
+    document.getElementById('archiveYearPrev')!.addEventListener('click', () => {
+      this.currentYear--;
+      void this.load();
+    });
+    document.getElementById('archiveYearNext')!.addEventListener('click', () => {
+      if (this.currentYear < new Date().getFullYear()) {
+        this.currentYear++;
+        void this.load();
+      }
+    });
+    this.searchInput.addEventListener('input', () => {
+      if (this.searchTimeout) clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => void this.applySearch(), 200);
+    });
+  }
+
+  show(): void {
+    this.currentYear = new Date().getFullYear();
+    this.searchInput.value = '';
+    this.overlay.classList.add('visible');
+    void this.load();
+  }
+
+  hide(): void {
+    this.overlay.classList.remove('visible');
+  }
+
+  private async load(): Promise<void> {
+    this.yearLabel.textContent = String(this.currentYear);
+    const yearPrefix = `${this.currentYear}-%`;
+
+    const [entryRows, doneRows] = await Promise.all([
+      query<{ date: string; entry_count: number }>(
+        'SELECT date, COUNT(*) as entry_count FROM log_entries WHERE date LIKE ? GROUP BY date ORDER BY date DESC',
+        [yearPrefix]
+      ),
+      query<{ date: string; done_count: number }>(
+        'SELECT DATE(completed_at) as date, COUNT(*) as done_count FROM todos WHERE completed_at LIKE ? GROUP BY DATE(completed_at)',
+        [yearPrefix]
+      ),
+    ]);
+
+    const entryCounts: Record<string, number> = {};
+    for (const r of entryRows) entryCounts[r.date] = r.entry_count;
+
+    const doneCounts: Record<string, number> = {};
+    for (const r of doneRows) doneCounts[r.date] = r.done_count;
+
+    const weeks = buildWeeks(entryCounts, doneCounts, this.currentYear);
+    this.renderWeeks(weeks);
+  }
+
+  private renderWeeks(weeks: Map<string, WeekData>): void {
+    this.body.innerHTML = '';
+    const sorted = Array.from(weeks.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+
+    let lastMonth = '';
+    for (const [weekStart, week] of sorted) {
+      const monthKey = weekStart.substring(0, 7);
+      if (monthKey !== lastMonth) {
+        lastMonth = monthKey;
+        const [yr, mo] = monthKey.split('-');
+        const label = new Date(`${yr}-${mo}-01T00:00:00`).toLocaleString('en-US', {
+          month: 'long', year: 'numeric',
+        });
+        const divider = document.createElement('div');
+        divider.className = 'archive-month-divider';
+        divider.innerHTML = `
+          <div class="archive-month-line"></div>
+          <div class="archive-month-label">${label}</div>
+          <div class="archive-month-line"></div>
+        `;
+        this.body.appendChild(divider);
+      }
+      this.body.appendChild(this.renderWeekCard(weekStart, week));
+    }
+  }
+
+  private renderWeekCard(weekStart: string, week: WeekData): HTMLElement {
+    const d = new Date(weekStart + 'T00:00:00');
+    const weekLabel = `Week of ${d.toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
+
+    const statsHtml = [
+      week.totalEntries > 0 ? `<span class="tag tag-log">${week.totalEntries} entries</span>` : '',
+      week.totalDone > 0 ? `<span class="tag tag-todo">${week.totalDone} done</span>` : '',
+    ].join('');
+
+    const card = document.createElement('div');
+    card.className = 'archive-week-card';
+    card.dataset.weekStart = weekStart;
+    card.innerHTML = `
+      <div class="archive-week-header">
+        <span class="archive-week-label">${weekLabel}</span>
+        <div class="archive-week-stats">${statsHtml}</div>
+      </div>
+      <div class="archive-week-days"></div>
+    `;
+
+    const daysContainer = card.querySelector('.archive-week-days')!;
+    for (const day of week.days) {
+      daysContainer.appendChild(this.renderDayTile(day));
+    }
+    return card;
+  }
+
+  private renderDayTile(day: DayData): HTMLElement {
+    const d = new Date(day.date + 'T00:00:00');
+    const dow = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()];
+    const isEmpty = day.entryCount === 0;
+    const isToday = day.date === this.today;
+
+    const tile = document.createElement('div');
+    tile.className = 'archive-day-tile';
+    tile.dataset.date = day.date;
+    if (isEmpty) tile.classList.add('empty');
+    if (isToday) tile.classList.add('today');
+
+    tile.innerHTML = `
+      <div class="archive-day-dow">${dow}</div>
+      <div class="archive-day-num">${d.getDate()}</div>
+      <div class="archive-day-count">${isEmpty ? '—' : `${day.entryCount} entries`}</div>
+    `;
+
+    if (!isEmpty) {
+      tile.addEventListener('click', () => {
+        this.hide();
+        this.onDaySelect(day.date);
+      });
+    }
+    return tile;
+  }
+
+  private async applySearch(): Promise<void> {
+    const q = this.searchInput.value.trim();
+    if (!q) {
+      this.clearSearchHighlights();
+      return;
+    }
+
+    const matchingRows = await query<{ date: string }>(
+      'SELECT DISTINCT date FROM log_entries WHERE date LIKE ? AND raw_text LIKE ?',
+      [`${this.currentYear}-%`, `%${q}%`]
+    );
+    const matchingDates = new Set(matchingRows.map(r => r.date));
+
+    for (const card of this.body.querySelectorAll<HTMLElement>('.archive-week-card')) {
+      let cardHasMatch = false;
+      for (const tile of card.querySelectorAll<HTMLElement>('.archive-day-tile')) {
+        const date = tile.dataset.date!;
+        tile.classList.remove('search-match', 'search-no-match');
+        if (matchingDates.has(date)) {
+          tile.classList.add('search-match');
+          cardHasMatch = true;
+        } else {
+          tile.classList.add('search-no-match');
+        }
+      }
+      card.classList.toggle('search-hidden', !cardHasMatch);
+    }
+  }
+
+  private clearSearchHighlights(): void {
+    this.body.querySelectorAll('.archive-day-tile').forEach(t => {
+      t.classList.remove('search-match', 'search-no-match');
+    });
+    this.body.querySelectorAll('.archive-week-card').forEach(c => {
+      c.classList.remove('search-hidden');
+    });
+  }
+}

@@ -11,6 +11,7 @@ import { ChatArea } from './components/ChatArea.js';
 import { TodoPanel } from './components/TodoPanel.js';
 import { Sidebar } from './components/Sidebar.js';
 import { SettingsModal } from './components/SettingsModal.js';
+import { ArchiveModal } from './components/ArchiveModal.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 class App {
@@ -20,6 +21,7 @@ class App {
   private settings: SettingsModal;
   private sidebar: Sidebar;
   private inputHandler!: InputHandler;
+  private archive: ArchiveModal;
   readonly ready: Promise<void>;
 
   constructor() {
@@ -27,6 +29,7 @@ class App {
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
     this.settings = new SettingsModal();
+    this.archive = new ArchiveModal((date) => { void this.openDayModal(date); });
     this.sidebar = new Sidebar((date) => { void this.openDayModal(date); });
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
     this.todoPanel.setOnComplete(() => this.sidebar.refresh());
@@ -135,6 +138,7 @@ class App {
     document.getElementById('viewLogBtn')!.addEventListener('click', () => this.openLogModal());
     document.getElementById('settingsBtn')!.addEventListener('click', () => { void this.settings.open(); });
     document.getElementById('exportBtn')!.addEventListener('click', () => { void exportMarkdown(); });
+    document.getElementById('archiveBtn')!.addEventListener('click', () => this.archive.show());
   }
 
   private toggleSidebar(): void {
