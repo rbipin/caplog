@@ -11,6 +11,7 @@ import { ChatArea } from './components/ChatArea.js';
 import { TodoPanel } from './components/TodoPanel.js';
 import { Sidebar } from './components/Sidebar.js';
 import { SettingsModal } from './components/SettingsModal.js';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 class App {
   private chatArea: ChatArea;
@@ -19,6 +20,7 @@ class App {
   private settings: SettingsModal;
   private sidebar: Sidebar;
   private inputHandler!: InputHandler;
+  readonly ready: Promise<void>;
 
   constructor() {
     this.chatArea = new ChatArea();
@@ -30,7 +32,7 @@ class App {
     this.todoPanel.setOnComplete(() => this.sidebar.refresh());
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
-    void this.init();
+    this.ready = this.init();
   }
 
   private async init(): Promise<void> {
@@ -235,5 +237,7 @@ class App {
 
 window.addEventListener('DOMContentLoaded', async () => {
   await initDB();
-  new App();
+  const app = new App();
+  await app.ready;
+  await getCurrentWindow().show();
 });
