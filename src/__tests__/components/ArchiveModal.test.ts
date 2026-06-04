@@ -114,7 +114,7 @@ describe('ArchiveModal', () => {
     expect(document.querySelector('.archive-day-tile.today')).not.toBeNull();
   });
 
-  it('hides archive and shows day modal when a day tile is clicked', async () => {
+  it('keeps archive open and opens day modal when a day tile is clicked', async () => {
     queryMock.mockImplementation(async (sql: string) => {
       if (sql.includes('log_entries') && sql.includes('COUNT')) return [{ date: '2026-06-03', entry_count: 4 }];
       return [];
@@ -127,7 +127,7 @@ describe('ArchiveModal', () => {
     tile!.click();
     await new Promise(r => setTimeout(r, 60));
 
-    expect(document.getElementById('archiveModal')!.classList.contains('visible')).toBe(false);
+    expect(document.getElementById('archiveModal')!.classList.contains('visible')).toBe(true);
   });
 
   it('navigates to previous year', async () => {

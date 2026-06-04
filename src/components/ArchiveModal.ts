@@ -76,7 +76,10 @@ export class ArchiveModal {
 
     document.getElementById('archiveCloseBtn')!.addEventListener('click', () => this.hide());
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.overlay.classList.contains('visible')) this.hide();
+      if (e.key === 'Escape' && this.overlay.classList.contains('visible')) {
+        if (document.querySelector('.modal-overlay.visible')) return;
+        this.hide();
+      }
     });
     document.getElementById('archiveYearPrev')!.addEventListener('click', () => {
       this.currentYear--;
@@ -203,7 +206,6 @@ export class ArchiveModal {
 
     if (!isEmpty) {
       tile.addEventListener('click', () => {
-        this.hide();
         this.onDaySelect(day.date);
       });
     }
