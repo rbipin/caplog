@@ -65,6 +65,7 @@ export class ArchiveModal {
   private currentYear: number;
   private today: string;
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  private searchSeq = 0;
 
   constructor(private onDaySelect: (date: string) => void) {
     this.overlay = document.getElementById('archiveModal')!;
@@ -131,6 +132,7 @@ export class ArchiveModal {
 
     const weeks = buildWeeks(entryCounts, doneCounts, this.currentYear);
     this.renderWeeks(weeks);
+    if (this.searchInput.value.trim()) void this.applySearch();
   }
 
   private renderWeeks(weeks: Map<string, WeekData>): void {
@@ -139,7 +141,11 @@ export class ArchiveModal {
 
     let lastMonth = '';
     for (const [weekStart, week] of sorted) {
-      const monthKey = weekStart.substring(0, 7);
+      const yearStr = String(this.currentYear);
+      const firstInYear = week.days
+        .filter(d => d.date.startsWith(yearStr))
+        .sort((a, b) => a.date.localeCompare(b.date))[0];
+      const monthKey = firstInYear ? firstInYear.date.substring(0, 7) : weekStart.substring(0, 7);
       if (monthKey !== lastMonth) {
         lastMonth = monthKey;
         const [yr, mo] = monthKey.split('-');
@@ -213,6 +219,7 @@ export class ArchiveModal {
   }
 
   private async applySearch(): Promise<void> {
+    const seq = ++this.searchSeq;
     const q = this.searchInput.value.trim();
     if (!q) {
       this.clearSearchHighlights();
@@ -223,6 +230,7 @@ export class ArchiveModal {
       'SELECT DISTINCT date FROM log_entries WHERE date LIKE ? AND raw_text LIKE ?',
       [`${this.currentYear}-%`, `%${q}%`]
     );
+    if (seq !== this.searchSeq) return;
     const matchingDates = new Set(matchingRows.map(r => r.date));
 
     for (const card of this.body.querySelectorAll<HTMLElement>('.archive-week-card')) {
