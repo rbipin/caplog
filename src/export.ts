@@ -22,7 +22,7 @@ export async function exportMarkdown(): Promise<void> {
     grouped.get(e.date)!.push(`- ${text}`);
   }
 
-  let md = '# DayLog Export\n\n';
+  let md = '# CapLog Export\n\n';
   for (const [date, lines] of grouped.entries()) {
     const d = new Date(date + 'T00:00:00');
     md += `## ${d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}\n\n`;
@@ -32,7 +32,7 @@ export async function exportMarkdown(): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
   const path = await save({
     filters: [{ name: 'Markdown', extensions: ['md'] }],
-    defaultPath: `daylog-export-${today}.md`,
+    defaultPath: `caplog-export-${today}.md`,
   });
 
   if (path) await writeTextFile(path, md);
