@@ -26,6 +26,7 @@ An `Archive` button styled as `.btn-ghost` is added to the sidebar header, betwe
 A full-screen overlay (`position: fixed; inset: 0`) that replaces the entire app view while open. Follows existing modal patterns (same close button style, same color tokens).
 
 **Header bar** (48px, matches app header height):
+
 - *Archive* title — `font-serif`, italic, `var(--accent)` color
 - Search input — full-width, `var(--bg)` background, focuses to `var(--accent)` border; searches across `raw_text` and `formatted_text` of all entries
 - Year navigator — `◀ YYYY` · `YYYY (active)` · `YYYY ▶` buttons, styled as `.btn-ghost`; future years are disabled/dimmed
@@ -36,10 +37,12 @@ A full-screen overlay (`position: fixed; inset: 0`) that replaces the entire app
 Content is ordered newest-first. Month boundaries are marked with a centered divider line + label (same pattern as `.day-divider`, uppercase, `var(--text-dim)`).
 
 Each **week card** (`background: var(--surface)`, `border: 1px solid var(--border)`, `border-radius: 6px`) contains:
+
 - **Week header**: "Week of Mon DD" label (uppercase, `var(--text-muted)`) + entry count tag (`.tag-log`) + todo-done count tag (`.tag-todo`)
 - **Day tiles**: horizontal row of day tiles, one per calendar day Mon–Fri (weekends shown only if they have entries)
 
 Each **day tile** (`background: var(--surface-2)`, `border-radius: 4px`, left border accent on hover/active):
+
 - Day-of-week abbreviation (`var(--text-dim)`, 10px)
 - Day number (Instrument Serif, 22px, `var(--text)`)
 - Entry count (`var(--text-dim)`, 10px) — shown as `—` if no entries
@@ -51,6 +54,7 @@ Each **day tile** (`background: var(--surface-2)`, `border-radius: 4px`, left bo
 ### Search Behavior
 
 Typing in the search field filters the view in real time:
+
 - Matching weeks remain visible; non-matching weeks collapse
 - Days with matching entries are highlighted (amber left border); days with no matches are dimmed
 - Search triggers a DB query against `raw_text` of `log_entries` for the selected year (debounced ~200ms); results return matching dates which highlight the relevant day tiles
@@ -84,6 +88,7 @@ These are joined in-memory on the frontend to build the week/day structure.
 ## New Component
 
 `src/components/ArchiveModal.ts` — `ArchiveModal` class, following the pattern of `LogModal` and `SettingsModal`:
+
 - Constructor accepts `onDaySelect: (date: string) => void` callback
 - `show()` / `hide()` methods
 - Manages its own DOM overlay element
@@ -103,3 +108,4 @@ The sidebar header gains an "Archive" button (`.btn-ghost`) that calls `archiveM
 - Exporting from the archive (that lives in `LogModal`)
 - Week summary / AI-generated recap
 - Pagination (the year navigator + in-memory grouping handles scale)
+
