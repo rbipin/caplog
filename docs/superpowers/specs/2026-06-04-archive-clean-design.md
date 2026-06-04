@@ -1,7 +1,7 @@
 # Archive Clean — Design Spec
 
 **Date:** 2026-06-04
-**Status:** Approved
+**Status:** Pending
 
 ## Problem
 

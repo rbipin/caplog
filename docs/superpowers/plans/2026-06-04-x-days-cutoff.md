@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Pending
+
 **Goal:** Wire the existing `chat_days` setting into `Sidebar` (LIMIT) and `TodoPanel` (completed-todo cutoff), with live refresh on settings save — no restart required.
 
 **Architecture:** `App` owns a `chatDays: number` field and a new `applyChatDays()` method that reads the DB setting and pushes the value into `Sidebar.refresh(days)` and `TodoPanel.load(days)`. Each component stores the last-used value internally so subsequent no-arg calls (triggered by internal refreshes) reuse it. `SettingsModal` gains a `setOnSave(cb)` hook that `App` uses to trigger `applyChatDays()` immediately after save.
@@ -200,6 +202,109 @@ Expected: all 3 tests pass.
 ```bash
 git add src/components/Sidebar.ts src/__tests__/components/Sidebar.test.ts
 git commit -m "feat: sidebar respects chat_days limit via refresh(days)"
+```
+
+---
+
+## Task 1b: Remove hardcoded Archive section from todoLogic (TDD)
+
+**Context:** The entry-todo-enhancements feature (already implemented) added a hardcoded 7-day "Archive" section to `getTodoSections()` in `src/todoLogic.ts`. The x-days cutoff plan filters old completed todos at the SQL level — they are never fetched. If `getTodoSections()` still has the Archive section, todos between 7 and `chat_days` days old will appear in the "Archive" section instead of being hidden, which contradicts the spec. The fix: remove the Archive section entirely and simplify the "Completed" filter to `t.is_completed` (the SQL already handles the date cutoff).
+
+**Files:**
+- Modify: `src/todoLogic.ts`
+- Modify: `src/__tests__/todoLogic.test.ts`
+
+- [ ] **Step 1: Replace the archive-split tests with a replacement test**
+
+Open `src/__tests__/todoLogic.test.ts`. Remove the entire `describe('getTodoSections — archive split', ...)` block (lines ~54–87). Replace it with:
+
+```typescript
+describe('getTodoSections — completed section', () => {
+  it('returns no section with label "Archive"', () => {
+    const sections = getTodoSections();
+    expect(sections.find(s => s.label === 'Archive')).toBeUndefined();
+  });
+
+  it('completed todo (completed today) appears in Completed section', () => {
+    const sections = getTodoSections();
+    const completed = sections.find(s => s.label === 'Completed')!;
+    const recent = makeTodo({ is_completed: 1, completed_at: new Date().toISOString() });
+    expect(completed.filter(recent)).toBe(true);
+  });
+
+  it('completed todo with old completed_at still appears in Completed section', () => {
+    const sections = getTodoSections();
+    const completed = sections.find(s => s.label === 'Completed')!;
+    const old = new Date();
+    old.setDate(old.getDate() - 30);
+    const oldTodo = makeTodo({ is_completed: 1, completed_at: old.toISOString() });
+    expect(completed.filter(oldTodo)).toBe(true);
+  });
+
+  it('completed todo with null completed_at appears in Completed section', () => {
+    const sections = getTodoSections();
+    const completed = sections.find(s => s.label === 'Completed')!;
+    const noDate = makeTodo({ is_completed: 1, completed_at: null });
+    expect(completed.filter(noDate)).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 2: Run tests — confirm the new ones fail**
+
+Run: `pnpm test src/__tests__/todoLogic.test.ts`
+Expected: the 4 new tests fail — `getTodoSections()` still returns an Archive section and the Completed filter still rejects old todos.
+
+- [ ] **Step 3: Update `src/todoLogic.ts`**
+
+Replace the entire file with:
+
+```typescript
+import { TodoItem } from './types.js';
+
+export type TodoSection = {
+  label: string;
+  filter: (t: TodoItem) => boolean;
+  collapsed?: boolean;
+};
+
+export function todoStatus(todo: TodoItem): 'completed' | 'important' | 'overdue' | 'open' {
+  if (todo.is_completed) return 'completed';
+  if (todo.is_important) return 'important';
+  if (todo.deadline) {
+    const today = new Date().toISOString().split('T')[0];
+    if (todo.deadline <= today) return 'overdue';
+  }
+  return 'open';
+}
+
+export function getTodoSections(): TodoSection[] {
+  const today = new Date().toISOString().split('T')[0];
+
+  return [
+    { label: 'Important',    filter: (t) => !t.is_completed && !!t.is_important },
+    { label: 'Due / Overdue', filter: (t) => !t.is_completed && !t.is_important && !!t.deadline && t.deadline <= today },
+    { label: 'Open',          filter: (t) => !t.is_completed && !t.is_important && (!t.deadline || t.deadline > today) },
+    { label: 'Completed',     filter: (t) => !!t.is_completed },
+  ];
+}
+```
+
+Key changes from original:
+- Removed `archiveCutoff` and `cutoffIso` variables
+- Removed the `Archive` section entry
+- Simplified `Completed` filter from `!!t.is_completed && !!t.completed_at && t.completed_at >= cutoffIso` to `!!t.is_completed`
+
+- [ ] **Step 4: Run tests — confirm they pass**
+
+Run: `pnpm test src/__tests__/todoLogic.test.ts`
+Expected: all tests pass, including the 4 new ones.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/todoLogic.ts src/__tests__/todoLogic.test.ts
+git commit -m "feat: remove hardcoded 7-day todo archive section; cutoff now governed by chat_days SQL filter"
 ```
 
 ---

@@ -1,6 +1,7 @@
 # Design: Entry & Todo Enhancements
 
 **Date:** 2026-06-02
+**Status:** Completed
 
 ## Overview
 

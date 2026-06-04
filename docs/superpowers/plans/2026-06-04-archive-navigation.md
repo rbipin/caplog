@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Pending
+
 **Goal:** Add a full-screen Archive overlay that lets users browse historical log entries organized by week, navigate by year, and search across all entries.
 
 **Architecture:** A new `ArchiveModal` TypeScript class manages a full-screen overlay (added to `index.html`). It queries SQLite for year-level data using existing `query()` from `src/db.ts`, groups dates into weeks client-side, and renders week cards with day tiles. An "Archive" button is added to the sidebar header. `App` wires the callback so that clicking a day tile closes the archive and opens the existing `LogModal` for that day.

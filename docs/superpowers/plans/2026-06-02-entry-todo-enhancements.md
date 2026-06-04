@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Completed
+
 **Goal:** Add delete-entry, sidebar day-view modal, multi-day collapsible chat feed with todo persistence, uncheck/edit todos, and an archive section for old completed todos.
 
 **Architecture:** All changes are frontend-only except one new SQL migration seeding `chat_days = 3`. `ChatArea` gains day-section grouping and a `currentSection` pointer so both bulk-load and runtime appends land in the right `<details>` block. `App.loadRecentEntries` merges log entries and todos by `created_at` for each day. `TodoPanel` gets `reopen()`, inline edit, and an archive `<details>` at the bottom.

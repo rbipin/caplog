@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Pending
+
 **Goal:** Add hover trash icons to month dividers, week cards, and day tiles in the Archive overlay, each triggering a confirmation dialog that permanently deletes all log entries and todos for that period.
 
 **Architecture:** A new `ArchiveConfirmModal` component manages the centered confirmation dialog DOM. `ArchiveModal` receives it via constructor and calls `confirmModal.show()` when a clean icon is clicked, passing the period label, counts, and a delete callback. Deletes run via `execute()` from `src/db.ts` — the same pattern used throughout the app. No Rust commands needed.

@@ -1,8 +1,9 @@
 # Test Suite Design — CapLog
 
-**Date:** 2026-06-01  
-**Scope:** Unit + component tests for all TypeScript source modules  
-**Framework:** Vitest + jsdom  
+**Date:** 2026-06-01
+**Status:** Completed
+**Scope:** Unit + component tests for all TypeScript source modules
+**Framework:** Vitest + jsdom
 
 ---
 

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Completed
+
 **Goal:** Replace the hardcoded Anthropic fetch in `src/ai.ts` with a class-based adapter pattern so any LLM provider (Anthropic, OpenAI-compatible, Ollama, etc.) can be configured from the Settings panel.
 
 **Architecture:** A new `src/llm/` folder holds a `LLMAdapter` interface, two concrete adapter classes (`AnthropicAdapter`, `OpenAIAdapter`), and a `getAdapter()` factory that reads four new DB settings keys and returns the active adapter (or `null` if unconfigured). `formatLogEntry` in `ai.ts` changes its second argument from `apiKey: string` to `adapter: LLMAdapter`. The Settings modal grows a provider dropdown, model field, and (conditionally) a base URL field.

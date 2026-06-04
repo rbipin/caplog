@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Completed
+
 **Goal:** Add a Vitest + jsdom test suite covering all pure logic, LLM adapters, db wrapper, export, and UI components.
 
 **Architecture:** Extract pure logic and UI components out of `main.ts` into focused modules so each can be imported and tested in isolation. Mock all Tauri plugins with `vi.mock`. UI component tests set up a jsdom DOM fixture before instantiating each class.
