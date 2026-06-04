@@ -86,7 +86,7 @@ describe('exportMarkdown', () => {
     expect(writeTextFileMock).not.toHaveBeenCalled();
   });
 
-  it('output starts with a top-level # DayLog Export heading', async () => {
+  it('output starts with a top-level # CapLog Export heading', async () => {
     await exportMarkdown();
     const md = writeTextFileMock.mock.calls[0][1] as string;
     expect(md).toMatch(/^# CapLog Export/);

@@ -1,10 +1,10 @@
-# DayLog
+# CapLog
 
 A minimal, distraction-free desktop journaling and task-tracking app. Log what you did, capture todos, and let AI format your entries — all from a single text input.
 
 Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 
-![DayLog screenshot](docs/assets/daylog-screen.png)
+![CapLog screenshot](docs/assets/caplog-screen.png)
 
 ---
 
@@ -24,7 +24,7 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     DayLog Desktop App                  │
+│                     CapLog Desktop App                  │
 │                                                         │
 │  ┌──────────┐   ┌──────────────────┐   ┌─────────────┐ │
 │  │ Sidebar  │   │    ChatArea      │   │  TodoPanel  │ │
@@ -298,7 +298,7 @@ The [tauri-action](https://github.com/tauri-apps/tauri-action) GitHub Action bui
 
 ## Design
 
-`sample/daylog-mock.html` is the canonical UI reference — a self-contained HTML file with dark theme, three-column layout, and working interactions. Match it for visual design when building new features.
+`sample/caplog-mock.html` is the canonical UI reference — a self-contained HTML file with dark theme, three-column layout, and working interactions. Match it for visual design when building new features.
 
 Fonts: **Instrument Serif** (headings) + **DM Mono** (body). Dark theme via CSS custom properties (`--bg`, `--surface`, `--text`, etc.).
 
