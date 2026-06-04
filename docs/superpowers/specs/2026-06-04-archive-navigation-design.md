@@ -108,4 +108,3 @@ The sidebar header gains an "Archive" button (`.btn-ghost`) that calls `archiveM
 - Exporting from the archive (that lives in `LogModal`)
 - Week summary / AI-generated recap
 - Pagination (the year navigator + in-memory grouping handles scale)
-
