@@ -19,7 +19,7 @@ Wire `chat_days` into `Sidebar` and `TodoPanel` using Option B: `App` owns `chat
 
 The SQL query changes from the hardcoded `LIMIT 30` to `LIMIT ?` with `chatDays` as the bind parameter. Everything else in the query — columns, ordering, subqueries — is unchanged.
 
-### Behaviour
+### Sidebar behavior
 
 - Sidebar shows the `chatDays` most recent calendar days that have at least one log entry.
 - Days beyond the cutoff are not shown. The existing Archive button (from the archive navigation feature) is the entry point for older history. No additional hint or count is shown in the sidebar.
@@ -45,7 +45,7 @@ ORDER BY is_important DESC,
 
 The cutoff date is computed in TypeScript before the query: subtract `days` calendar days from today in `YYYY-MM-DD` format and pass it as a bind parameter. Open todos are never filtered. If `days` is not provided (e.g. during unit tests that don't pass a value) all completed todos are shown, preserving backward compatibility.
 
-### Behaviour
+### Todo panel behavior
 
 - Completed todos with `completed_at` before the cutoff date are silently hidden.
 - The Completed `<details>` section disappears entirely if no completed todos fall within the window.
@@ -57,7 +57,7 @@ The cutoff date is computed in TypeScript before the query: subtract `days` cale
 
 ### `App`
 
-`App` gains a `private chatDays: number` field initialised to `3`. A new private method `private async applyChatDays(): Promise<void>` reads `chat_days` from DB, sets `this.chatDays`, and calls:
+`App` gains a `private chatDays: number` field initialized to `3`. A new private method `private async applyChatDays(): Promise<void>` reads `chat_days` from DB, sets `this.chatDays`, and calls:
 
 ```typescript
 this.sidebar.refresh(this.chatDays);
