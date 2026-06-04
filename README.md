@@ -16,6 +16,7 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 - **Chat feed** — today's entries at the top; past days shown below as collapsible sections
 - **Log modal** — view all entries for the month in one overlay, with export
 - **AI formatting** — Anthropic or OpenAI-compatible backends (optional; falls back to raw text)
+- **Archive navigation** — calendar-style year view grouped by week; search across past entries by keyword, jump to any day with a click
 - **Export** — export all log entries to a Markdown file (header button or log modal footer)
 
 ---
@@ -38,10 +39,10 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 │  └──────────┘   │  └────────────┘  │   └─────────────┘ │
 │                 └──────────────────┘                    │
 │                                                         │
-│  ┌─────────────────────────┐  ┌──────────────────────┐  │
-│  │       LogModal          │  │    SettingsModal     │  │
-│  │  (month log overlay)    │  │  (LLM config)        │  │
-│  └─────────────────────────┘  └──────────────────────┘  │
+│  ┌──────────────┐  ┌──────────────────┐  ┌────────────┐  │
+│  │   LogModal   │  │  SettingsModal   │  │ArchiveModal│  │
+│  │ (month log)  │  │  (LLM config)    │  │ (year view)│  │
+│  └──────────────┘  └──────────────────┘  └────────────┘  │
 └─────────────────────────────────────────────────────────┘
                          │ Tauri IPC (invoke)
 ┌─────────────────────────────────────────────────────────┐
@@ -92,6 +93,7 @@ src/
 ├── components/
 │   ├── ChatArea.ts         ← Central log feed
 │   ├── InputHandler.ts     ← Textarea, submit, command highlighting
+│   ├── ArchiveModal.ts     ← Year-view calendar archive + keyword search
 │   ├── LogModal.ts         ← Monthly log overlay
 │   ├── SettingsModal.ts    ← LLM provider config
 │   ├── Sidebar.ts          ← Past days list

@@ -26,11 +26,21 @@ const FULL_DOM = `<div id="app">
   <button id="sidebarToggleBtn"></button><button id="viewLogBtn"></button>
   <button id="settingsBtn"></button><button id="exportBtn"></button>
   <div id="logModal"><div id="modalSubtitle"></div><div id="modalBody"></div>
-    <button id="modalCloseBtn"></button><button id="modalFooterCloseBtn"></button></div>
+    <button id="modalCloseBtn"></button><button id="modalFooterCloseBtn"></button>
+    <button id="modalExportBtn"></button></div>
   <div id="settingsModal">
     <select id="llmProviderSelect"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option></select>
     <input id="apiKeyInput" /><input id="llmModelInput" /><input id="llmBaseUrlInput" />
     <div id="baseUrlGroup"></div><input id="chatDaysInput" type="number" /><button id="settingsCloseBtn"></button><button id="saveSettingsBtn"></button>
+  </div>
+  <button id="archiveBtn"></button>
+  <div class="archive-overlay" id="archiveModal">
+    <input class="archive-search" id="archiveSearchInput" />
+    <button id="archiveYearPrev">◀</button>
+    <span id="archiveYearLabel"></span>
+    <button id="archiveYearNext">▶</button>
+    <button id="archiveCloseBtn">✕</button>
+    <div id="archiveBody"></div>
   </div>
 </div>`;
 

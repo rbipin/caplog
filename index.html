@@ -25,7 +25,10 @@
 
       <!-- Left sidebar -->
       <aside class="sidebar" id="sidebar">
-        <div class="sidebar-section-title" id="sidebarMonthLabel"></div>
+        <div class="sidebar-header">
+          <div class="sidebar-section-title" id="sidebarMonthLabel"></div>
+          <button class="btn-ghost sidebar-archive-btn" id="archiveBtn">⊞ Archive</button>
+        </div>
         <div id="dayList"></div>
       </aside>
 
@@ -123,6 +126,20 @@
           <button id="saveSettingsBtn" class="settings-save-btn">Save</button>
         </div>
       </div>
+    </div>
+    <!-- Archive Modal -->
+    <div class="archive-overlay" id="archiveModal">
+      <div class="archive-header">
+        <span class="archive-title">Archive</span>
+        <input class="archive-search" id="archiveSearchInput" placeholder="Search entries..." />
+        <div class="archive-year-nav">
+          <button class="btn-ghost" id="archiveYearPrev">◀</button>
+          <span class="archive-year-label" id="archiveYearLabel"></span>
+          <button class="btn-ghost" id="archiveYearNext">▶</button>
+        </div>
+        <button class="modal-close" id="archiveCloseBtn">✕</button>
+      </div>
+      <div class="archive-body" id="archiveBody"></div>
     </div>
   </body>
 </html>

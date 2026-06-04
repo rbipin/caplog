@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Pending
+**Status:** Completed
 
 **Goal:** Add a full-screen Archive overlay that lets users browse historical log entries organized by week, navigate by year, and search across all entries.
 

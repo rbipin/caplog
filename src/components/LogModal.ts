@@ -19,7 +19,10 @@ export class LogModal {
       if (e.target === this.overlay) this.close();
     });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.overlay.classList.contains('visible')) this.close();
+      if (e.key === 'Escape' && this.overlay.classList.contains('visible')) {
+        e.stopImmediatePropagation();
+        this.close();
+      }
     });
   }
 
