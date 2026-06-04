@@ -29,7 +29,7 @@ pnpm tauri build
 
 ## Architecture
 
-DayLog is a **Tauri v2** desktop app: a Vite + Vanilla TypeScript frontend talking to a Rust backend via Tauri's IPC (`invoke`). The UI has three columns: Sidebar (past days), ChatArea (log feed + input), TodoPanel (task list).
+CapLog is a **Tauri v2** desktop app: a Vite + Vanilla TypeScript frontend talking to a Rust backend via Tauri's IPC (`invoke`). The UI has three columns: Sidebar (past days), ChatArea (log feed + input), TodoPanel (task list).
 
 ### Frontend (`src/`)
 
@@ -72,7 +72,7 @@ Helper scripts that aren't part of the app runtime.
 
 ### Design reference
 
-`sample/daylog-mock.html` is the canonical UI reference — a self-contained file with working JS, dark theme, and all three-column layout. Match it for visual design and interactions when building features.
+`sample/caplog-mock.html` is the canonical UI reference — a self-contained file with working JS, dark theme, and all three-column layout. Match it for visual design and interactions when building features.
 
 ## Testing
 

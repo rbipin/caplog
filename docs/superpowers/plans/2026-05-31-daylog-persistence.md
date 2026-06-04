@@ -1,8 +1,8 @@
-# DayLog Persistence Implementation Plan
+# CapLog Persistence Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace all seed/mock data in the DayLog UI with real SQLite persistence, wire AI formatting via Claude API, and add a settings panel for API key management.
+**Goal:** Replace all seed/mock data in the CapLog UI with real SQLite persistence, wire AI formatting via Claude API, and add a settings panel for API key management.
 
 **Architecture:** The frontend (`src/main.ts`) already has all UI classes with mock data — each class will be updated to read/write from SQLite via a new `src/db.ts` abstraction. AI formatting lives in `src/ai.ts` and is called during log entry submission. API key is stored in a `settings` table in SQLite (no extra Rust plugin needed).
 
@@ -75,7 +75,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(
-                    "sqlite:daylog.db",
+                    "sqlite:caplog.db",
                     vec![tauri_plugin_sql::Migration {
                         version: 1,
                         description: "init",
@@ -142,7 +142,7 @@ import Database from '@tauri-apps/plugin-sql';
 let db: Database | null = null;
 
 export async function initDB(): Promise<void> {
-  db = await Database.load('sqlite:daylog.db');
+  db = await Database.load('sqlite:caplog.db');
 }
 
 export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
@@ -1063,7 +1063,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(
-                    "sqlite:daylog.db",
+                    "sqlite:caplog.db",
                     vec![tauri_plugin_sql::Migration {
                         version: 1,
                         description: "init",
@@ -1126,7 +1126,7 @@ export async function exportMarkdown(): Promise<void> {
     grouped.get(e.date)!.push(`- ${text}`);
   }
 
-  let md = '# DayLog Export\n\n';
+  let md = '# CapLog Export\n\n';
   for (const [date, lines] of grouped.entries()) {
     const d = new Date(date + 'T00:00:00');
     md += `## ${d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}\n\n`;
@@ -1136,7 +1136,7 @@ export async function exportMarkdown(): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
   const path = await save({
     filters: [{ name: 'Markdown', extensions: ['md'] }],
-    defaultPath: `daylog-export-${today}.md`,
+    defaultPath: `caplog-export-${today}.md`,
   });
 
   if (path) await writeTextFile(path, md);
@@ -1197,7 +1197,7 @@ In `src-tauri/tauri.conf.json`, update the `windows` array:
 ```json
 "windows": [
   {
-    "title": "daylog",
+    "title": "caplog",
     "width": 1200,
     "height": 800,
     "minWidth": 800,

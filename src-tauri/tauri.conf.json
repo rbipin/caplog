@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "daylog",
-  "version": "0.1.0",
-  "identifier": "com.bipin.daylog",
+  "productName": "CapLog",
+  "version": "1.1.0",
+  "identifier": "com.bipin.caplog",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "daylog",
+        "title": "CapLog",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
@@ -30,7 +30,6 @@
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ]

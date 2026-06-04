@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Build the DayLog Tauri app for Windows with automatic prerequisite checks
+    Build the CapLog Tauri app for Windows with automatic prerequisite checks
     and Visual Studio Developer environment setup.
 
 .DESCRIPTION

@@ -4,7 +4,7 @@
 
 ## Overview
 
-Eight enhancements to DayLog's core UX:
+Eight enhancements to CapLog's core UX:
 
 1. Delete a log entry (any day)
 2. Click a sidebar day to open that day's log + todos completed that day in a modal

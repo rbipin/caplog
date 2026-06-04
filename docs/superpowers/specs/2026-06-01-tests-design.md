@@ -1,4 +1,4 @@
-# Test Suite Design — DayLog
+# Test Suite Design — CapLog
 
 **Date:** 2026-06-01  
 **Scope:** Unit + component tests for all TypeScript source modules  

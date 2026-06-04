@@ -1,4 +1,4 @@
-# DayLog — Implementation Plan
+# CapLog — Implementation Plan
 
 > A native desktop productivity app built with Tauri + vanilla JS + SQLite.
 > Cross-platform: macOS and Windows.
@@ -7,7 +7,7 @@
 
 ## Overview
 
-DayLog is a chat-style desktop app with three core features:
+CapLog is a chat-style desktop app with three core features:
 
 - **Daily log** — type naturally, AI cleans and formats entries into bullet points
 - **Todo list** — persistent, command-driven, auto-rolls forward daily
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS todos (
 ## Project Structure
 
 ```
-daylog/
+caplog/
 ├── src/
 │   ├── index.html          # Main UI (from mock)
 │   ├── styles.css          # All styles extracted
@@ -128,8 +128,8 @@ daylog/
 1. Create project:
 
    ```bash
-   npm create tauri-app@latest daylog
-   cd daylog
+   npm create tauri-app@latest caplog
+   cd caplog
    ```
 
    Choose: vanilla HTML/CSS/JS, no framework.
@@ -173,7 +173,7 @@ Mock UI opens in a native desktop window. Sidebar collapses. View Log modal open
    let db;
 
    export async function initDB() {
-     db = await Database.load('sqlite:daylog.db');
+     db = await Database.load('sqlite:caplog.db');
      return db;
    }
 
@@ -346,7 +346,7 @@ async function exportMarkdown() {
     'SELECT * FROM log_entries ORDER BY date DESC, created_at ASC'
   );
 
-  let md = '# DayLog Export\n\n';
+  let md = '# CapLog Export\n\n';
   const grouped = groupByDate(entries);
 
   for (const [date, items] of Object.entries(grouped)) {
@@ -358,7 +358,7 @@ async function exportMarkdown() {
 
   const path = await save({
     filters: [{ name: 'Markdown', extensions: ['md'] }],
-    defaultPath: `daylog-export-${new Date().toISOString().split('T')[0]}.md`
+    defaultPath: `caplog-export-${new Date().toISOString().split('T')[0]}.md`
   });
 
   if (path) await writeTextFile(path, md);

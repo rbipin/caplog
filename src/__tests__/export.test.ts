@@ -67,7 +67,7 @@ describe('exportMarkdown', () => {
         filters: expect.arrayContaining([
           expect.objectContaining({ extensions: expect.arrayContaining(['md']) }),
         ]),
-        defaultPath: expect.stringMatching(/daylog-export.*\.md/),
+        defaultPath: expect.stringMatching(/caplog-export.*\.md/),
       })
     );
   });
@@ -77,7 +77,7 @@ describe('exportMarkdown', () => {
     await exportMarkdown();
     expect(writeTextFileMock).toHaveBeenCalledWith('/tmp/export.md', expect.any(String));
     const md = writeTextFileMock.mock.calls[0][1] as string;
-    expect(md).toContain('# DayLog Export');
+    expect(md).toContain('# CapLog Export');
   });
 
   it('if save() returns null, writeTextFile is not called', async () => {
@@ -86,10 +86,10 @@ describe('exportMarkdown', () => {
     expect(writeTextFileMock).not.toHaveBeenCalled();
   });
 
-  it('output starts with a top-level # DayLog Export heading', async () => {
+  it('output starts with a top-level # CapLog Export heading', async () => {
     await exportMarkdown();
     const md = writeTextFileMock.mock.calls[0][1] as string;
-    expect(md).toMatch(/^# DayLog Export/);
+    expect(md).toMatch(/^# CapLog Export/);
   });
 
   it('entries from the same date appear under the same heading', async () => {
