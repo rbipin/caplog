@@ -1,4 +1,4 @@
-# CapLog
+# <img src="src-tauri/icons/CapLog-blue.png" width="32" alt="CapLog icon"> CapLog
 
 A minimal, distraction-free desktop journaling and task-tracking app. Log what you did, capture todos, and let AI format your entries — all from a single text input.
 
