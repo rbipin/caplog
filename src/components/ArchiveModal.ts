@@ -1,4 +1,5 @@
 import { query, execute } from '../db.js';
+import { parseLocalDate, getToday } from '../utils.js';
 import type { ArchiveConfirmModal } from './ArchiveConfirmModal.js';
 
 interface DayData {
@@ -15,7 +16,7 @@ interface WeekData {
 }
 
 export function getWeekStart(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = parseLocalDate(dateStr);
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
@@ -42,7 +43,7 @@ export function buildWeeks(
 
   for (const week of weeks.values()) {
     const existing = new Set(week.days.map(d => d.date));
-    const mon = new Date(week.weekStart + 'T00:00:00');
+    const mon = parseLocalDate(week.weekStart);
     for (let i = 0; i < 5; i++) {
       const d = new Date(mon);
       d.setDate(mon.getDate() + i);
@@ -76,7 +77,7 @@ export class ArchiveModal {
     this.searchInput = document.getElementById('archiveSearchInput') as HTMLInputElement;
     this.yearLabel = document.getElementById('archiveYearLabel')!;
     this.currentYear = new Date().getFullYear();
-    this.today = new Date().toISOString().split('T')[0];
+    this.today = getToday();
 
     document.getElementById('archiveCloseBtn')!.addEventListener('click', () => this.hide());
     document.addEventListener('keydown', (e) => {
@@ -150,7 +151,7 @@ export class ArchiveModal {
       if (monthKey !== lastMonth) {
         lastMonth = monthKey;
         const [yr, mo] = monthKey.split('-');
-        const label = new Date(`${yr}-${mo}-01T00:00:00`).toLocaleString('en-US', {
+        const label = parseLocalDate(`${yr}-${mo}-01`).toLocaleString('en-US', {
           month: 'long', year: 'numeric',
         });
         const divider = document.createElement('div');
@@ -171,7 +172,7 @@ export class ArchiveModal {
   }
 
   private renderWeekCard(weekStart: string, week: WeekData): HTMLElement {
-    const d = new Date(weekStart + 'T00:00:00');
+    const d = parseLocalDate(weekStart);
     const weekLabel = `Week of ${d.toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
 
     const statsHtml = [
@@ -207,7 +208,7 @@ export class ArchiveModal {
   }
 
   private renderDayTile(day: DayData): HTMLElement {
-    const d = new Date(day.date + 'T00:00:00');
+    const d = parseLocalDate(day.date);
     const dow = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()];
     const isEmpty = day.entryCount === 0;
     const isToday = day.date === this.today;
@@ -245,7 +246,7 @@ export class ArchiveModal {
     ]);
     const entryCount = entryRows[0]?.count ?? 0;
     const todoCount = todoRows[0]?.count ?? 0;
-    const label = new Date(date + 'T00:00:00').toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const label = parseLocalDate(date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     this.confirmModal.show(
       `Delete ${label}?`,
@@ -261,7 +262,7 @@ export class ArchiveModal {
   }
 
   private async cleanWeek(weekStart: string): Promise<void> {
-    const start = new Date(weekStart + 'T00:00:00');
+    const start = parseLocalDate(weekStart);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     const endDate = end.toISOString().split('T')[0];
@@ -272,7 +273,7 @@ export class ArchiveModal {
     ]);
     const entryCount = entryRows[0]?.count ?? 0;
     const todoCount = todoRows[0]?.count ?? 0;
-    const weekLabel = `Week of ${new Date(weekStart + 'T00:00:00').toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
+    const weekLabel = `Week of ${parseLocalDate(weekStart).toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
 
     this.confirmModal.show(
       `Delete ${weekLabel}?`,
@@ -297,7 +298,7 @@ export class ArchiveModal {
     ]);
     const entryCount = entryRows[0]?.count ?? 0;
     const todoCount = todoRows[0]?.count ?? 0;
-    const label = new Date(`${yr}-${mo}-01T00:00:00`).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const label = parseLocalDate(`${yr}-${mo}-01`).toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
     this.confirmModal.show(
       `Delete ${label}?`,

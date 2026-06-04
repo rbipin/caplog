@@ -1,5 +1,5 @@
 import { query } from '../db.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, parseLocalDate } from '../utils.js';
 import type { DayStats } from '../types.js';
 
 export class Sidebar {
@@ -11,7 +11,7 @@ export class Sidebar {
     this.dayList = document.getElementById('dayList')!;
     const now = new Date();
     this.monthLabel.textContent = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    this.load();
+    void this.load();
   }
 
   refresh(): void {
@@ -36,7 +36,7 @@ export class Sidebar {
   }
 
   private renderEntry(s: DayStats, active: boolean): HTMLElement {
-    const d = new Date(s.date + 'T00:00:00');
+    const d = parseLocalDate(s.date);
     const dowNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const dow = dowNames[d.getDay()];
     const day = d.getDate();

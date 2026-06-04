@@ -31,5 +31,5 @@ export interface DayStats {
   date: string;
   log_count: number;
   todo_done_count: number;
-  preview: string;
+  preview: string | null;
 }

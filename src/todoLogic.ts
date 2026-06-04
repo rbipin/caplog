@@ -1,4 +1,5 @@
 import { TodoItem } from './types.js';
+import { getToday } from './utils.js';
 
 export type TodoSection = {
   label: string;
@@ -10,14 +11,14 @@ export function todoStatus(todo: TodoItem): 'completed' | 'important' | 'overdue
   if (todo.is_completed) return 'completed';
   if (todo.is_important) return 'important';
   if (todo.deadline) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getToday();
     if (todo.deadline <= today) return 'overdue';
   }
   return 'open';
 }
 
 export function getTodoSections(): TodoSection[] {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getToday();
   const archiveCutoff = new Date();
   archiveCutoff.setDate(archiveCutoff.getDate() - 7);
   const cutoffIso = archiveCutoff.toISOString();
