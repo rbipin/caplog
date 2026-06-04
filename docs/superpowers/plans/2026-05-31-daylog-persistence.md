@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Completed
+
 **Goal:** Replace all seed/mock data in the CapLog UI with real SQLite persistence, wire AI formatting via Claude API, and add a settings panel for API key management.
 
 **Architecture:** The frontend (`src/main.ts`) already has all UI classes with mock data — each class will be updated to read/write from SQLite via a new `src/db.ts` abstraction. AI formatting lives in `src/ai.ts` and is called during log entry submission. API key is stored in a `settings` table in SQLite (no extra Rust plugin needed).

@@ -1,7 +1,7 @@
 # Pluggable LLM Adapter Design
 
 **Date:** 2026-05-31
-**Status:** Approved
+**Status:** Completed
 
 ## Goal
 

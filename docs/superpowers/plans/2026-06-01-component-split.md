@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Completed
+
 **Goal:** Split `src/main.ts` into one file per UI class under `src/components/`, rename the orchestrator to `src/app.ts`, and update all tests to match.
 
 **Architecture:** Each class (`LogModal`, `InputHandler`, `ChatArea`, `TodoPanel`, `Sidebar`, `SettingsModal`) becomes its own file under `src/components/`. `src/app.ts` replaces `src/main.ts` as the entry point — it imports every component, wires them together in the `App` class, and registers the `DOMContentLoaded` bootstrap. `index.html` is updated to point at `app.ts`. The three component integration tests swap their `import('../../main.js')` call to `import('../../app.js')`.
