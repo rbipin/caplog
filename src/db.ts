@@ -3,7 +3,7 @@ import Database from '@tauri-apps/plugin-sql';
 let db: Database | null = null;
 
 export async function initDB(): Promise<void> {
-  db = await Database.load('sqlite:daylog.db');
+  db = await Database.load('sqlite:caplog.db');
 }
 
 export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {

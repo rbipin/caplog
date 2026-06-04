@@ -7,7 +7,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(
-                    "sqlite:daylog.db",
+                    "sqlite:caplog.db",
                     vec![tauri_plugin_sql::Migration {
                         version: 1,
                         description: "init",
