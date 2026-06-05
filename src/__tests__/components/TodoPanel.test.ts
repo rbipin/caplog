@@ -12,8 +12,12 @@ vi.mock('../../db.js', () => ({
   execute: executeMock,
   getSetting: vi.fn().mockResolvedValue(null),
   setSetting: vi.fn().mockResolvedValue(undefined),
+  deleteSetting: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock('../../llm/factory.js', () => ({ getAdapter: vi.fn().mockResolvedValue(null) }));
+vi.mock('../../llm/factory.js', () => ({
+  getAdapter: vi.fn().mockResolvedValue(null),
+  runLLMMigration: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('../../export.js', () => ({ exportMarkdown: vi.fn() }));
 vi.mock('../../ai.js', () => ({ formatLogEntry: vi.fn().mockResolvedValue('<ul><li>ok</li></ul>') }));
 

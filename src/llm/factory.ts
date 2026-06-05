@@ -1,26 +1,28 @@
-import { getSetting, setSetting, execute } from '../db.js';
+import { getSetting, setSetting, deleteSetting } from '../db.js';
 import { LLMAdapter } from './adapter.js';
 import { AnthropicAdapter } from './anthropic.js';
 import { OpenAIAdapter } from './openai.js';
 
 const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
-export async function getAdapter(): Promise<LLMAdapter | null> {
+export async function runLLMMigration(): Promise<void> {
   const oldKey = await getSetting('anthropic_api_key');
-  let provider = await getSetting('llm_provider');
+  const provider = await getSetting('llm_provider');
 
   if (oldKey && !provider) {
     try {
       await setSetting('llm_provider', 'anthropic');
       await setSetting('llm_api_key', oldKey);
       await setSetting('llm_model', DEFAULT_ANTHROPIC_MODEL);
-      await execute('DELETE FROM settings WHERE key = ?', ['anthropic_api_key']);
-      provider = 'anthropic';
+      await deleteSetting('anthropic_api_key');
     } catch {
       console.warn('LLM settings migration failed — will retry next launch');
-      return null;
     }
   }
+}
+
+export async function getAdapter(): Promise<LLMAdapter | null> {
+  const provider = await getSetting('llm_provider');
 
   if (!provider) return null;
 

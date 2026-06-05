@@ -6,10 +6,11 @@ vi.mock('../../db.js', () => ({
   getSetting: vi.fn(),
   setSetting: vi.fn().mockResolvedValue(undefined),
   execute: vi.fn().mockResolvedValue(undefined),
+  deleteSetting: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { getSetting } from '../../db.js';
-import { getAdapter } from '../../llm/factory.js';
+import { getAdapter, runLLMMigration } from '../../llm/factory.js';
 
 describe('getAdapter', () => {
   beforeEach(() => { vi.clearAllMocks(); });
@@ -55,10 +56,18 @@ describe('getAdapter', () => {
   });
 
   it('legacy anthropic_api_key present, no llm_provider → migrates and returns AnthropicAdapter', async () => {
+    // Before migration: old key present, no provider
     vi.mocked(getSetting).mockImplementation(async (key) => {
       if (key === 'anthropic_api_key') return 'legacy-key';
       if (key === 'llm_provider') return null;
-      if (key === 'llm_api_key') return 'legacy-key'; // after migration this would be set
+      return null;
+    });
+    await runLLMMigration();
+
+    // After migration: provider and api key are set
+    vi.mocked(getSetting).mockImplementation(async (key) => {
+      if (key === 'llm_provider') return 'anthropic';
+      if (key === 'llm_api_key') return 'legacy-key';
       if (key === 'llm_model') return null;
       return null;
     });

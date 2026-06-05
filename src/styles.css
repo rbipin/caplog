@@ -1132,7 +1132,6 @@ details.todo-archive[open] > summary.todo-archive-summary::before {
   color: var(--text-dim);
 }
 
-/* ── Archive clean ── */
 .archive-clean-btn {
   background: none;
   border: none;

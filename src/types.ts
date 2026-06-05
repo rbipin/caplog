@@ -1,8 +1,8 @@
 export interface TodoItem {
   id: number;
   text: string;
-  is_important: number;
-  is_completed: number;
+  is_important: 0 | 1;
+  is_completed: 0 | 1;
   deadline: string | null;
   created_at: string;
   completed_at: string | null;
@@ -33,3 +33,7 @@ export interface DayStats {
   todo_done_count: number;
   preview: string | null;
 }
+
+export type FeedItem =
+  | { created_at: string; kind: 'log'; entry: LogEntry }
+  | { created_at: string; kind: 'todo'; todo: TodoItem };
