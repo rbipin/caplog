@@ -2,7 +2,7 @@ import { initDB, query, execute, getSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
 import { getAdapter, runLLMMigration } from './llm/factory.js';
-import { escapeHtml, stripHtml } from './utils.js';
+import { escapeHtml, stripHtml, formatTime } from './utils.js';
 import type { LLMAdapter } from './llm/adapter.js';
 import type { LogEntry, TodoItem, FeedItem } from './types.js';
 import { parseCommand } from './commands.js';
@@ -105,7 +105,7 @@ class App {
       for (const item of items) {
         if (item.kind === 'log') {
           const e = item.entry;
-          const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          const time = formatTime(e.created_at);
           this.chatArea.append({
             time, type: 'log', typeLabel: 'Log entry',
             content: e.formatted_text,
@@ -114,7 +114,7 @@ class App {
           }, false);
         } else {
           const t = item.todo;
-          const time = new Date(t.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          const time = formatTime(t.created_at);
           const typeLabel = t.deadline ? `Todo created — due ${t.deadline}` : 'Todo created';
           this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text) }, false);
         }
@@ -136,7 +136,7 @@ class App {
 
     const items = entries.map((e) => ({
       text: stripHtml(e.formatted_text),
-      time: new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      time: formatTime(e.created_at),
     }));
 
     this.modal.openDay(dateLabel, items, todos);
@@ -169,7 +169,7 @@ class App {
 
     const grouped = new Map<string, { text: string; time: string }[]>();
     for (const e of entries) {
-      const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const time = formatTime(e.created_at);
       if (!grouped.has(e.date)) grouped.set(e.date, []);
       grouped.get(e.date)!.push({ text: stripHtml(e.formatted_text), time });
     }

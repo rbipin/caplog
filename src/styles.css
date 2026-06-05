@@ -1130,3 +1130,85 @@ details.todo-archive[open] > summary.todo-archive-summary::before {
   font-size: 10px;
   color: var(--text-dim);
 }
+
+.archive-clean-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 2px 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+
+.archive-day-tile .archive-clean-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.archive-day-tile:hover .archive-clean-btn,
+.archive-week-header:hover .archive-clean-btn,
+.archive-month-divider:hover .archive-clean-btn {
+  opacity: 1;
+}
+
+.archive-clean-btn:hover { color: #c0392b; }
+
+.btn-danger {
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.btn-danger:hover { background: #a93226; }
+
+.archive-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 101;
+}
+
+.archive-confirm-overlay.visible { display: flex; }
+
+.archive-confirm-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+}
+
+.archive-confirm-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.archive-confirm-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.archive-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
