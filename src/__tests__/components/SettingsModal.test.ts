@@ -126,18 +126,18 @@ describe('SettingsModal', () => {
     expect((document.getElementById('baseUrlGroup') as HTMLElement).style.display).toBe('block');
   });
 
-  it('save() with empty API key deletes all five setting rows', async () => {
+  it('save() with empty API key deletes LLM setting rows but not chat_days', async () => {
     await openSettings();
     // apiKeyInput is empty (reset in beforeEach)
     document.getElementById('saveSettingsBtn')!.click();
     await new Promise(r => setTimeout(r, 30));
 
-    expect(deleteSettingMock).toHaveBeenCalledTimes(5);
+    expect(deleteSettingMock).toHaveBeenCalledTimes(4);
     expect(deleteSettingMock).toHaveBeenCalledWith('llm_provider');
     expect(deleteSettingMock).toHaveBeenCalledWith('llm_api_key');
     expect(deleteSettingMock).toHaveBeenCalledWith('llm_model');
     expect(deleteSettingMock).toHaveBeenCalledWith('llm_base_url');
-    expect(deleteSettingMock).toHaveBeenCalledWith('chat_days');
+    expect(deleteSettingMock).not.toHaveBeenCalledWith('chat_days');
   });
 
   it('save() with valid inputs writes provider, key, model, baseUrl, and chat_days to db', async () => {

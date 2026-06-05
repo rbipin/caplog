@@ -28,7 +28,7 @@ export class ArchiveModal {
     document.getElementById('archiveCloseBtn')!.addEventListener('click', () => this.hide());
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.overlay.classList.contains('visible')) {
-        if (document.querySelector('.modal-overlay.visible')) return;
+        if (document.querySelector('.archive-confirm-overlay.visible')) return;
         this.hide();
       }
     });
@@ -192,11 +192,12 @@ export class ArchiveModal {
     label: string,
     entryWhere: string,
     todoWhere: string,
-    params: (string | number)[]
+    entryParams: (string | number)[],
+    todoParams: (string | number)[]
   ): Promise<void> {
     const [entryRows, todoRows] = await Promise.all([
-      query<{ count: number }>(`SELECT COUNT(*) as count FROM log_entries WHERE ${entryWhere}`, params),
-      query<{ count: number }>(`SELECT COUNT(*) as count FROM todos WHERE ${todoWhere}`, params),
+      query<{ count: number }>(`SELECT COUNT(*) as count FROM log_entries WHERE ${entryWhere}`, entryParams),
+      query<{ count: number }>(`SELECT COUNT(*) as count FROM todos WHERE ${todoWhere}`, todoParams),
     ]);
     const entryCount = entryRows[0]?.count ?? 0;
     const todoCount = todoRows[0]?.count ?? 0;
@@ -206,8 +207,8 @@ export class ArchiveModal {
       `${entryCount} log entries and ${todoCount} todos will be permanently deleted. This cannot be undone.`,
       async () => {
         await Promise.all([
-          execute(`DELETE FROM log_entries WHERE ${entryWhere}`, params),
-          execute(`DELETE FROM todos WHERE ${todoWhere}`, params),
+          execute(`DELETE FROM log_entries WHERE ${entryWhere}`, entryParams),
+          execute(`DELETE FROM todos WHERE ${todoWhere}`, todoParams),
         ]);
         void this.load();
       }
@@ -216,19 +217,20 @@ export class ArchiveModal {
 
   private async cleanDay(date: string): Promise<void> {
     const label = parseLocalDate(date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    await this.cleanRange(label, 'date = ?', 'DATE(created_at) = ?', [date]);
+    await this.cleanRange(label, 'date = ?', 'DATE(created_at) = ?', [date], [date]);
   }
 
   private async cleanWeek(weekStart: string): Promise<void> {
     const start = parseLocalDate(weekStart);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
-    const endDate = end.toISOString().split('T')[0];
+    const endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
     const label = `Week of ${parseLocalDate(weekStart).toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
     await this.cleanRange(
       label,
       'date >= ? AND date <= ?',
       'DATE(created_at) >= ? AND DATE(created_at) <= ?',
+      [weekStart, endDate],
       [weekStart, endDate]
     );
   }
@@ -237,7 +239,7 @@ export class ArchiveModal {
     const [yr, mo] = yearMonth.split('-');
     const pattern = `${yearMonth}-%`;
     const label = parseLocalDate(`${yr}-${mo}-01`).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    await this.cleanRange(label, 'date LIKE ?', 'DATE(created_at) LIKE ?', [pattern]);
+    await this.cleanRange(label, 'date LIKE ?', 'DATE(created_at) LIKE ?', [pattern], [pattern]);
   }
 
   private async applySearch(): Promise<void> {

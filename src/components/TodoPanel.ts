@@ -1,5 +1,5 @@
 import { query, execute } from '../db.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, getToday } from '../utils.js';
 import { todoStatus, getTodoSections } from '../todoLogic.js';
 import type { TodoItem } from '../types.js';
 
@@ -23,7 +23,7 @@ export class TodoPanel {
 
     let todos: TodoItem[];
     if (this.cutoffDays !== undefined) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getToday();
       const d = new Date(today + 'T00:00:00');
       d.setDate(d.getDate() - this.cutoffDays);
       const cutoff = d.toISOString().split('T')[0];
@@ -139,7 +139,7 @@ export class TodoPanel {
       if (status === 'important') {
         parts.push('<span class="todo-badge important">important</span>');
       } else if (status === 'overdue') {
-        parts.push('<span class="todo-badge overdue">due soon</span>');
+        parts.push('<span class="todo-badge overdue">overdue</span>');
       }
       return parts.length ? `<div class="todo-meta">${parts.join('')}</div>` : '';
     })();

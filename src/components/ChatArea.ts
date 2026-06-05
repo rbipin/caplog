@@ -143,8 +143,6 @@ export class ChatArea {
         [newText, formatted, msg.entryId]
       );
 
-      msg.rawInput = newText;
-      msg.content = formatted;
       contentEl.innerHTML = formatted;
     });
   }
