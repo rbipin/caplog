@@ -8,6 +8,7 @@ export class SettingsModal {
   private baseUrlInput: HTMLInputElement;
   private baseUrlGroup: HTMLElement;
   private chatDaysInput: HTMLInputElement;
+  private onSaveCallback: (() => void) | null = null;
 
   constructor() {
     this.overlay = document.getElementById('settingsModal')!;
@@ -49,6 +50,10 @@ export class SettingsModal {
     this.overlay.classList.add('visible');
   }
 
+  setOnSave(fn: () => void): void {
+    this.onSaveCallback = fn;
+  }
+
   close(): void {
     this.overlay.classList.remove('visible');
   }
@@ -64,6 +69,7 @@ export class SettingsModal {
         execute('DELETE FROM settings WHERE key = ?', ['llm_base_url']),
         execute('DELETE FROM settings WHERE key = ?', ['chat_days']),
       ]);
+      this.onSaveCallback?.();
       this.close();
       return;
     }
@@ -84,6 +90,7 @@ export class SettingsModal {
     await setSetting('llm_base_url', provider === 'openai' ? baseUrl : '');
     await setSetting('chat_days', chatDays);
 
+    this.onSaveCallback?.();
     this.close();
   }
 }

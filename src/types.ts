@@ -33,3 +33,7 @@ export interface DayStats {
   todo_done_count: number;
   preview: string;
 }
+
+export type FeedItem =
+  | { created_at: string; kind: 'log'; entry: LogEntry }
+  | { created_at: string; kind: 'todo'; todo: TodoItem };

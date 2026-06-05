@@ -1,7 +1,7 @@
 import { execute } from '../db.js';
 import { formatLogEntry } from '../ai.js';
-import { getAdapter } from '../llm/factory.js';
 import { escapeHtml } from '../utils.js';
+import type { LLMAdapter } from '../llm/adapter.js';
 import type { Message } from '../types.js';
 
 export class ChatArea {
@@ -9,6 +9,7 @@ export class ChatArea {
   private currentSection: HTMLElement | null = null;
   private todaySection: HTMLElement | null = null;
   private onSidebarRefresh: (() => void) | null = null;
+  private adapterGetter: (() => LLMAdapter | null) = () => null;
 
   constructor() {
     this.el = document.getElementById('chatArea')!;
@@ -16,6 +17,10 @@ export class ChatArea {
 
   setSidebarRefresh(fn: () => void): void {
     this.onSidebarRefresh = fn;
+  }
+
+  setAdapterGetter(fn: () => LLMAdapter | null): void {
+    this.adapterGetter = fn;
   }
 
   appendDaySection(label: string, dateSubLabel: string, isToday: boolean): void {
@@ -122,7 +127,7 @@ export class ChatArea {
       saveBtn.textContent = '...';
       saveBtn.disabled = true;
 
-      const adapter = await getAdapter();
+      const adapter = this.adapterGetter();
       let formatted = `<ul><li>${escapeHtml(newText)}</li></ul>`;
 
       if (adapter) {

@@ -3,8 +3,10 @@ import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
 import { getAdapter } from './llm/factory.js';
 import { escapeHtml, stripHtml } from './utils.js';
-import type { LogEntry, TodoItem } from './types.js';
+import type { LLMAdapter } from './llm/adapter.js';
+import type { LogEntry, TodoItem, FeedItem } from './types.js';
 import { parseCommand } from './commands.js';
+import type { ParsedCommand } from './commands.js';
 import { LogModal } from './components/LogModal.js';
 import { InputHandler } from './components/InputHandler.js';
 import { ChatArea } from './components/ChatArea.js';
@@ -14,6 +16,11 @@ import { SettingsModal } from './components/SettingsModal.js';
 import { ArchiveModal } from './components/ArchiveModal.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
+type LogCommand = Extract<ParsedCommand, { type: 'log' }>;
+type TodoCommand = Extract<ParsedCommand, { type: 'todo' }>;
+type DoneCommand = Extract<ParsedCommand, { type: 'done' }>;
+type ImportantCommand = Extract<ParsedCommand, { type: 'important' }>;
+
 class App {
   private chatArea: ChatArea;
   private todoPanel: TodoPanel;
@@ -22,6 +29,7 @@ class App {
   private sidebar: Sidebar;
   private inputHandler!: InputHandler;
   private archive: ArchiveModal;
+  private adapter: LLMAdapter | null = null;
   readonly ready: Promise<void>;
 
   constructor() {
@@ -32,7 +40,9 @@ class App {
     this.archive = new ArchiveModal((date) => { void this.openDayModal(date); });
     this.sidebar = new Sidebar((date) => { void this.openDayModal(date); });
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
+    this.chatArea.setAdapterGetter(() => this.adapter);
     this.todoPanel.setOnComplete(() => this.sidebar.refresh());
+    this.settings.setOnSave(() => { void this.refreshAdapter(); });
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
     this.ready = this.init();
@@ -42,7 +52,7 @@ class App {
     try {
       const chatDays = parseInt((await getSetting('chat_days')) ?? '3') || 3;
       await Promise.all([this.todoPanel.load(), this.loadRecentEntries(chatDays)]);
-      await getAdapter();
+      this.adapter = await getAdapter();
     } catch (err) {
       console.error('Startup load failed:', err);
       this.chatArea.append({
@@ -50,6 +60,10 @@ class App {
         content: 'Failed to load data. Please restart the app.',
       });
     }
+  }
+
+  private async refreshAdapter(): Promise<void> {
+    this.adapter = await getAdapter();
   }
 
   private async loadRecentEntries(days: number): Promise<void> {
@@ -78,10 +92,6 @@ class App {
         query<LogEntry>('SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC', [date]),
         query<TodoItem>('SELECT * FROM todos WHERE created_at LIKE ? ORDER BY created_at ASC', [date + '%']),
       ]);
-
-      type FeedItem =
-        | { created_at: string; kind: 'log'; entry: LogEntry }
-        | { created_at: string; kind: 'todo'; todo: TodoItem };
 
       const items: FeedItem[] = [
         ...entries.map((e) => ({ created_at: e.created_at, kind: 'log' as const, entry: e })),
@@ -172,70 +182,76 @@ class App {
   private async handleInput(value: string): Promise<void> {
     const now = new Date();
     const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
     const cmd = parseCommand(value);
 
-    if (cmd.type === 'todo') {
-      await this.todoPanel.add(cmd.text, false, cmd.deadline);
-      void this.sidebar.refresh();
-      const label = cmd.deadline ? `Todo created — due ${cmd.deadline}` : 'Todo created';
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(cmd.text) });
+    if (cmd.type === 'log') await this.handleLog(cmd, time);
+    else if (cmd.type === 'todo') await this.handleTodo(cmd, time);
+    else if (cmd.type === 'done') await this.handleDone(cmd, time);
+    else if (cmd.type === 'important') await this.handleImportant(cmd, time);
+  }
 
-    } else if (cmd.type === 'done') {
-      const found = await this.todoPanel.completeByText(cmd.task);
-      void this.sidebar.refresh();
-      this.chatArea.append({
-        time, type: 'system', typeLabel: 'System',
-        content: found
-          ? `Marked <span style="color:var(--text)">"${escapeHtml(cmd.task)}"</span> as complete.`
-          : `No active todo matching "${escapeHtml(cmd.task)}" found.`,
-      });
+  private async handleLog(cmd: LogCommand, time: string): Promise<void> {
+    const today = new Date().toISOString().split('T')[0];
 
-    } else if (cmd.type === 'important') {
-      await this.todoPanel.add(cmd.text, true, null);
-      void this.sidebar.refresh();
-      this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(cmd.text) });
+    let formatted = `<ul><li>${escapeHtml(cmd.text)}</li></ul>`;
 
-    } else if (cmd.type === 'log') {
-      const today = new Date().toISOString().split('T')[0];
-      const adapter = await getAdapter();
-
-      let formatted = `<ul><li>${escapeHtml(cmd.text)}</li></ul>`;
-
-      if (adapter) {
-        this.inputHandler.setLoading(true);
-        try {
-          formatted = await formatLogEntry(cmd.text, adapter);
-        } catch (err) {
-          console.error('AI format failed:', err);
-          this.chatArea.append({
-            time, type: 'system', typeLabel: 'System',
-            content: 'AI formatting failed — saved raw text.',
-          });
-        } finally {
-          this.inputHandler.setLoading(false);
-        }
+    if (this.adapter) {
+      this.inputHandler.setLoading(true);
+      try {
+        formatted = await formatLogEntry(cmd.text, this.adapter);
+      } catch (err) {
+        console.error('AI format failed:', err);
+        this.chatArea.append({
+          time, type: 'system', typeLabel: 'System',
+          content: 'AI formatting failed — saved raw text.',
+        });
+      } finally {
+        this.inputHandler.setLoading(false);
       }
-
-      await execute(
-        'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
-        [today, cmd.text, formatted, new Date().toISOString()]
-      );
-
-      const rows = await query<{ id: number }>(
-        'SELECT id FROM log_entries WHERE date = ? ORDER BY created_at DESC LIMIT 1',
-        [today]
-      );
-
-      this.chatArea.append({
-        time, type: 'log', typeLabel: 'Log entry',
-        content: formatted,
-        rawInput: cmd.text,
-        entryId: rows[0]?.id,
-      });
-
-      void this.sidebar.refresh();
     }
+
+    await execute(
+      'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
+      [today, cmd.text, formatted, new Date().toISOString()]
+    );
+
+    const rows = await query<{ id: number }>(
+      'SELECT id FROM log_entries WHERE date = ? ORDER BY created_at DESC LIMIT 1',
+      [today]
+    );
+
+    this.chatArea.append({
+      time, type: 'log', typeLabel: 'Log entry',
+      content: formatted,
+      rawInput: cmd.text,
+      entryId: rows[0]?.id,
+    });
+
+    void this.sidebar.refresh();
+  }
+
+  private async handleTodo(cmd: TodoCommand, time: string): Promise<void> {
+    await this.todoPanel.add(cmd.text, false, cmd.deadline);
+    void this.sidebar.refresh();
+    const label = cmd.deadline ? `Todo created — due ${cmd.deadline}` : 'Todo created';
+    this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(cmd.text) });
+  }
+
+  private async handleDone(cmd: DoneCommand, time: string): Promise<void> {
+    const found = await this.todoPanel.completeByText(cmd.task);
+    void this.sidebar.refresh();
+    this.chatArea.append({
+      time, type: 'system', typeLabel: 'System',
+      content: found
+        ? `Marked <span style="color:var(--text)">"${escapeHtml(cmd.task)}"</span> as complete.`
+        : `No active todo matching "${escapeHtml(cmd.task)}" found.`,
+    });
+  }
+
+  private async handleImportant(cmd: ImportantCommand, time: string): Promise<void> {
+    await this.todoPanel.add(cmd.text, true, null);
+    void this.sidebar.refresh();
+    this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(cmd.text) });
   }
 }
 
