@@ -1,6 +1,7 @@
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { query } from './db.js';
+import { parseLocalDate, getToday } from './utils.js';
 
 interface ExportEntry {
   date: string;
@@ -24,12 +25,12 @@ export async function exportMarkdown(): Promise<void> {
 
   let md = '# CapLog Export\n\n';
   for (const [date, lines] of grouped.entries()) {
-    const d = new Date(date + 'T00:00:00');
+    const d = parseLocalDate(date);
     md += `## ${d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}\n\n`;
     md += lines.join('\n') + '\n\n';
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getToday();
   const path = await save({
     filters: [{ name: 'Markdown', extensions: ['md'] }],
     defaultPath: `caplog-export-${today}.md`,

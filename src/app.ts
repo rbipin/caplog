@@ -2,7 +2,7 @@ import { initDB, query, execute, getSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
 import { getAdapter, runLLMMigration } from './llm/factory.js';
-import { escapeHtml, stripHtml, formatTime } from './utils.js';
+import { escapeHtml, stripHtml, parseLocalDate, getToday, formatTime } from './utils.js';
 import type { LLMAdapter } from './llm/adapter.js';
 import type { LogEntry, TodoItem, FeedItem } from './types.js';
 import { parseCommand } from './commands.js';
@@ -71,7 +71,7 @@ class App {
   }
 
   private async loadRecentEntries(days: number): Promise<void> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getToday();
 
     const dateRows = await query<{ date: string }>(
       'SELECT DISTINCT date FROM log_entries ORDER BY date DESC LIMIT ?',
@@ -84,8 +84,8 @@ class App {
 
     for (const date of dates) {
       const isToday = date === today;
-      const d = new Date(date + 'T00:00:00');
-      const diffMs = new Date(today).getTime() - d.getTime();
+      const d = parseLocalDate(date);
+      const diffMs = parseLocalDate(today).getTime() - d.getTime();
       const diffDays = Math.round(diffMs / 86400000);
       const label = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : d.toLocaleString('en-US', { weekday: 'long' });
       const dateSubLabel = d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
@@ -126,7 +126,7 @@ class App {
   }
 
   private async openDayModal(date: string): Promise<void> {
-    const d = new Date(date + 'T00:00:00');
+    const d = parseLocalDate(date);
     const dateLabel = d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
     const [entries, todos] = await Promise.all([
@@ -175,7 +175,7 @@ class App {
     }
 
     const modalData = Array.from(grouped.entries()).map(([date, items]) => {
-      const d = new Date(date + 'T00:00:00');
+      const d = parseLocalDate(date);
       const label = d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
       return { date: label, items };
     });
