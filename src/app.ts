@@ -2,7 +2,7 @@ import { initDB, query, execute, getSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
 import { getAdapter } from './llm/factory.js';
-import { escapeHtml, stripHtml } from './utils.js';
+import { escapeHtml, stripHtml, parseLocalDate, getToday, formatTime } from './utils.js';
 import type { LogEntry, TodoItem } from './types.js';
 import { parseCommand } from './commands.js';
 import { LogModal } from './components/LogModal.js';
@@ -12,6 +12,7 @@ import { TodoPanel } from './components/TodoPanel.js';
 import { Sidebar } from './components/Sidebar.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { ArchiveModal } from './components/ArchiveModal.js';
+import { ArchiveConfirmModal } from './components/ArchiveConfirmModal.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 class App {
@@ -22,6 +23,7 @@ class App {
   private sidebar: Sidebar;
   private inputHandler!: InputHandler;
   private archive: ArchiveModal;
+  private archiveConfirm: ArchiveConfirmModal;
   readonly ready: Promise<void>;
 
   constructor() {
@@ -29,7 +31,8 @@ class App {
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
     this.settings = new SettingsModal();
-    this.archive = new ArchiveModal((date) => { void this.openDayModal(date); });
+    this.archiveConfirm = new ArchiveConfirmModal();
+    this.archive = new ArchiveModal((date) => { void this.openDayModal(date); }, this.archiveConfirm);
     this.sidebar = new Sidebar((date) => { void this.openDayModal(date); });
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
     this.todoPanel.setOnComplete(() => this.sidebar.refresh());
@@ -53,7 +56,7 @@ class App {
   }
 
   private async loadRecentEntries(days: number): Promise<void> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getToday();
 
     const dateRows = await query<{ date: string }>(
       'SELECT DISTINCT date FROM log_entries ORDER BY date DESC LIMIT ?',
@@ -66,8 +69,8 @@ class App {
 
     for (const date of dates) {
       const isToday = date === today;
-      const d = new Date(date + 'T00:00:00');
-      const diffMs = new Date(today).getTime() - d.getTime();
+      const d = parseLocalDate(date);
+      const diffMs = parseLocalDate(today).getTime() - d.getTime();
       const diffDays = Math.round(diffMs / 86400000);
       const label = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : d.toLocaleString('en-US', { weekday: 'long' });
       const dateSubLabel = d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
@@ -91,7 +94,7 @@ class App {
       for (const item of items) {
         if (item.kind === 'log') {
           const e = item.entry;
-          const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          const time = formatTime(e.created_at);
           this.chatArea.append({
             time, type: 'log', typeLabel: 'Log entry',
             content: e.formatted_text,
@@ -100,7 +103,7 @@ class App {
           }, false);
         } else {
           const t = item.todo;
-          const time = new Date(t.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          const time = formatTime(t.created_at);
           const typeLabel = t.deadline ? `Todo created — due ${t.deadline}` : 'Todo created';
           this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text) }, false);
         }
@@ -112,7 +115,7 @@ class App {
   }
 
   private async openDayModal(date: string): Promise<void> {
-    const d = new Date(date + 'T00:00:00');
+    const d = parseLocalDate(date);
     const dateLabel = d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
     const [entries, todos] = await Promise.all([
@@ -122,7 +125,7 @@ class App {
 
     const items = entries.map((e) => ({
       text: stripHtml(e.formatted_text),
-      time: new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      time: formatTime(e.created_at),
     }));
 
     this.modal.openDay(dateLabel, items, todos);
@@ -155,13 +158,13 @@ class App {
 
     const grouped = new Map<string, { text: string; time: string }[]>();
     for (const e of entries) {
-      const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const time = formatTime(e.created_at);
       if (!grouped.has(e.date)) grouped.set(e.date, []);
       grouped.get(e.date)!.push({ text: stripHtml(e.formatted_text), time });
     }
 
     const modalData = Array.from(grouped.entries()).map(([date, items]) => {
-      const d = new Date(date + 'T00:00:00');
+      const d = parseLocalDate(date);
       const label = d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
       return { date: label, items };
     });
@@ -197,7 +200,7 @@ class App {
       this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(cmd.text) });
 
     } else if (cmd.type === 'log') {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getToday();
       const adapter = await getAdapter();
 
       let formatted = `<ul><li>${escapeHtml(cmd.text)}</li></ul>`;

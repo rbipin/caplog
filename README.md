@@ -17,6 +17,7 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 - **Log modal** — view all entries for the month in one overlay, with export
 - **AI formatting** — Anthropic or OpenAI-compatible backends (optional; falls back to raw text)
 - **Archive navigation** — calendar-style year view grouped by week; search across past entries by keyword, jump to any day with a click
+- **Archive clean** — hover trash icons on day tiles, week cards, and month dividers; confirmation dialog shows exact entry and todo counts before permanently deleting the selected period
 - **Export** — export all log entries to a Markdown file (header button or log modal footer)
 
 ---

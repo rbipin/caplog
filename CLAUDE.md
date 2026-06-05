@@ -44,7 +44,8 @@ Each UI class lives in its own file under `src/components/`. `src/app.ts` is the
 | `src/components/Sidebar.ts` | `Sidebar` | Left panel; lists past `DayEntry` days with preview and stats |
 | `src/components/LogModal.ts` | `LogModal` | Overlay modal showing all log entries for the month; footer has an Export .md button wired to `exportMarkdown()` |
 | `src/components/SettingsModal.ts` | `SettingsModal` | LLM provider/key/model configuration overlay |
-| `src/components/ArchiveModal.ts` | `ArchiveModal` | Full-year calendar archive grouped by week; search entries by keyword, click a day to open its log via `onDaySelect` callback. Co-located `buildWeeks()` helper aggregates DB rows into week buckets. |
+| `src/components/ArchiveModal.ts` | `ArchiveModal` | Full-year calendar archive grouped by week; search entries by keyword, click a day to open its log via `onDaySelect` callback. Hover trash icons on tiles/cards/dividers call `cleanDay/cleanWeek/cleanMonth`, which show counts via `ArchiveConfirmModal` before deleting. Co-located `buildWeeks()` helper aggregates DB rows into week buckets. |
+| `src/components/ArchiveConfirmModal.ts` | `ArchiveConfirmModal` | Centered confirmation dialog for destructive archive operations. `show(title, body, onConfirm)` — clones the delete button each call to prevent stale listener accumulation. |
 
 **Command parsing** is handled in `src/commands.ts` via `parseCommand()`. Plain text → `log`. Slash commands: `/todo`, `/done`, `/important`, `/by`.
 
