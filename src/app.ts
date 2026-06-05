@@ -32,6 +32,7 @@ class App {
   private archive: ArchiveModal;
   private archiveConfirm: ArchiveConfirmModal;
   private adapter: LLMAdapter | null = null;
+  private chatDays: number = 3;
   readonly ready: Promise<void>;
 
   constructor() {
@@ -45,7 +46,7 @@ class App {
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
     this.chatArea.setAdapterGetter(() => this.adapter);
     this.todoPanel.setOnComplete(() => this.sidebar.refresh());
-    this.settings.setOnSave(() => { void this.refreshAdapter(); });
+    this.settings.setOnSave(() => { void this.applyChatDays(); void this.refreshAdapter(); });
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
     this.ready = this.init();
@@ -54,8 +55,8 @@ class App {
   private async init(): Promise<void> {
     try {
       await runLLMMigration();
-      const chatDays = parseInt((await getSetting('chat_days')) ?? '3') || 3;
-      await Promise.all([this.todoPanel.load(), this.loadRecentEntries(chatDays)]);
+      await this.applyChatDays();
+      await this.loadRecentEntries(this.chatDays);
       this.adapter = await getAdapter();
     } catch (err) {
       console.error('Startup load failed:', err);
@@ -64,6 +65,12 @@ class App {
         content: 'Failed to load data. Please restart the app.',
       });
     }
+  }
+
+  private async applyChatDays(): Promise<void> {
+    this.chatDays = parseInt((await getSetting('chat_days')) ?? '3') || 3;
+    await this.sidebar.refresh(this.chatDays);
+    await this.todoPanel.load(this.chatDays);
   }
 
   private async refreshAdapter(): Promise<void> {

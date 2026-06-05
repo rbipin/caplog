@@ -251,17 +251,32 @@ describe('TodoPanel', () => {
     );
   });
 
-  it('todos completed 8+ days ago appear in a collapsed Archive section', async () => {
-    const old = new Date();
-    old.setDate(old.getDate() - 8);
-    const archived = makeTodo({ id: 20, text: 'Old done', is_completed: 1, completed_at: old.toISOString() });
-    await triggerReload([archived]);
+  it('load() includes completed_at cutoff filter in query when days is set', async () => {
+    setTodosQuery([]);
+    await sendCommand('/todo __trigger__');
 
-    const labels = Array.from(document.querySelectorAll('#todoList .todo-section-label, #todoList summary')).map(el => el.textContent ?? '');
-    expect(labels.some(l => l.includes('Archive'))).toBe(true);
+    const cutoffCall = queryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM todos') && String(sql).includes('completed_at')
+    );
+    expect(cutoffCall).toBeDefined();
+    const params = cutoffCall![1] as unknown[];
+    expect(params).toHaveLength(1);
+    expect(params[0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 
-    const details = document.querySelector('#todoList details') as HTMLDetailsElement;
-    expect(details).not.toBeNull();
-    expect(details.open).toBe(false);
+  it('cutoff date param is today minus chatDays calendar days', async () => {
+    setTodosQuery([]);
+    await sendCommand('/todo __trigger__');
+
+    const cutoffCall = queryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM todos') && String(sql).includes('completed_at')
+    );
+    const cutoffDate = (cutoffCall![1] as string[])[0];
+
+    // App boots with default chatDays=3 (getSetting returns null → fallback 3)
+    const expected = new Date();
+    expected.setDate(expected.getDate() - 3);
+    const expectedStr = expected.toISOString().split('T')[0];
+    expect(cutoffDate).toBe(expectedStr);
   });
 });
