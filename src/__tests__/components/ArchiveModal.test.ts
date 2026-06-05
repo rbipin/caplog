@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 
-const { queryMock } = vi.hoisted(() => ({
+const { queryMock, executeMock } = vi.hoisted(() => ({
   queryMock: vi.fn().mockResolvedValue([]),
+  executeMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../db.js', () => ({
   initDB: vi.fn().mockResolvedValue(undefined),
   query: queryMock,
-  execute: vi.fn().mockResolvedValue(undefined),
+  execute: executeMock,
   getSetting: vi.fn().mockResolvedValue(null),
   setSetting: vi.fn().mockResolvedValue(undefined),
   deleteSetting: vi.fn().mockResolvedValue(undefined),
@@ -45,6 +46,12 @@ const FULL_DOM = `<div id="app">
     <button id="archiveCloseBtn">✕</button>
     <div id="archiveBody"></div>
   </div>
+  <div class="archive-confirm-overlay" id="archiveConfirmModal">
+    <div class="archive-confirm-title" id="archiveConfirmTitle"></div>
+    <div class="archive-confirm-body" id="archiveConfirmBody"></div>
+    <button id="archiveConfirmCancelBtn">Cancel</button>
+    <button id="archiveConfirmDeleteBtn">Delete</button>
+  </div>
 </div>`;
 
 describe('ArchiveModal', () => {
@@ -58,7 +65,9 @@ describe('ArchiveModal', () => {
 
   beforeEach(() => {
     queryMock.mockResolvedValue([]);
+    executeMock.mockClear();
     document.getElementById('archiveModal')!.classList.remove('visible');
+    document.getElementById('archiveConfirmModal')!.classList.remove('visible');
     document.getElementById('archiveBody')!.innerHTML = '';
     (document.getElementById('archiveSearchInput') as HTMLInputElement).value = '';
   });
@@ -171,5 +180,194 @@ describe('ArchiveModal', () => {
     await new Promise(r => setTimeout(r, 300));
 
     expect(document.querySelector('.archive-day-tile.search-match')).not.toBeNull();
+  });
+
+  it('day tile shows a clean button for non-empty tiles', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('log_entries') && sql.includes('COUNT(*)') && sql.includes('GROUP BY')) {
+        return [{ date: '2026-06-03', entry_count: 3 }];
+      }
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+    const cleanBtn = document.querySelector('.archive-day-tile:not(.empty) .archive-clean-btn');
+    expect(cleanBtn).not.toBeNull();
+  });
+
+  it('day tile does not show a clean button for empty tiles', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('log_entries') && sql.includes('COUNT(*)') && sql.includes('GROUP BY')) {
+        return [{ date: '2026-06-03', entry_count: 3 }];
+      }
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+    const emptyTile = document.querySelector('.archive-day-tile.empty');
+    if (emptyTile) {
+      expect(emptyTile.querySelector('.archive-clean-btn')).toBeNull();
+    }
+  });
+
+  it('clicking day clean button opens confirm dialog with correct title', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('GROUP BY date')) return [{ date: '2026-06-03', entry_count: 3 }];
+      if (sql.includes('COUNT(*)') && sql.includes('log_entries') && sql.includes('date = ?')) return [{ count: 3 }];
+      if (sql.includes('COUNT(*)') && sql.includes('todos') && sql.includes('DATE(created_at) = ?')) return [{ count: 1 }];
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    const cleanBtn = document.querySelector<HTMLElement>('.archive-day-tile:not(.empty) .archive-clean-btn');
+    expect(cleanBtn).not.toBeNull();
+    cleanBtn!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    expect(document.getElementById('archiveConfirmModal')!.classList.contains('visible')).toBe(true);
+    expect(document.getElementById('archiveConfirmTitle')!.textContent).toContain('Delete');
+    expect(document.getElementById('archiveConfirmBody')!.textContent).toContain('3 log entries');
+    expect(document.getElementById('archiveConfirmBody')!.textContent).toContain('1 todos');
+  });
+
+  it('confirming day delete calls execute with correct SQL and reloads', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('GROUP BY date')) return [{ date: '2026-06-03', entry_count: 2 }];
+      if (sql.includes('COUNT(*)') && sql.includes('log_entries') && sql.includes('date = ?')) return [{ count: 2 }];
+      if (sql.includes('COUNT(*)') && sql.includes('todos') && sql.includes('DATE(created_at) = ?')) return [{ count: 0 }];
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    const cleanBtn = document.querySelector<HTMLElement>('.archive-day-tile:not(.empty) .archive-clean-btn');
+    cleanBtn!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    document.getElementById('archiveConfirmDeleteBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'DELETE FROM log_entries WHERE date = ?',
+      ['2026-06-03']
+    );
+    expect(executeMock).toHaveBeenCalledWith(
+      'DELETE FROM todos WHERE DATE(created_at) = ?',
+      ['2026-06-03']
+    );
+    expect(document.getElementById('archiveConfirmModal')!.classList.contains('visible')).toBe(false);
+  });
+
+  it('week card shows a clean button', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('GROUP BY date')) return [{ date: '2026-06-03', entry_count: 2 }];
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+    expect(document.querySelector('.archive-week-card .archive-clean-btn')).not.toBeNull();
+  });
+
+  it('confirming week delete calls execute with date range', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('GROUP BY date')) return [{ date: '2026-06-03', entry_count: 2 }];
+      if (sql.includes('COUNT(*)') && sql.includes('log_entries') && sql.includes('>=')) return [{ count: 2 }];
+      if (sql.includes('COUNT(*)') && sql.includes('todos') && sql.includes('>=')) return [{ count: 0 }];
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    const weekClean = document.querySelector<HTMLElement>('.archive-week-card .archive-clean-btn');
+    weekClean!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    document.getElementById('archiveConfirmDeleteBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'DELETE FROM log_entries WHERE date >= ? AND date <= ?',
+      expect.arrayContaining([expect.any(String), expect.any(String)])
+    );
+  });
+
+  it('month divider shows a clean button', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('GROUP BY date')) return [{ date: '2026-06-03', entry_count: 2 }];
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+    expect(document.querySelector('.archive-month-divider .archive-clean-btn')).not.toBeNull();
+  });
+
+  it('confirming month delete calls execute with LIKE pattern', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes('GROUP BY date')) return [{ date: '2026-06-03', entry_count: 2 }];
+      if (sql.includes('COUNT(*)') && sql.includes('LIKE')) return [{ count: 2 }];
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    const monthClean = document.querySelector<HTMLElement>('.archive-month-divider .archive-clean-btn');
+    monthClean!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    document.getElementById('archiveConfirmDeleteBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'DELETE FROM log_entries WHERE date LIKE ?',
+      ['2026-06-%']
+    );
+    expect(executeMock).toHaveBeenCalledWith(
+      'DELETE FROM todos WHERE DATE(created_at) LIKE ?',
+      ['2026-06-%']
+    );
+  });
+});
+
+describe('ArchiveConfirmModal', () => {
+  it('is hidden by default', () => {
+    expect(document.getElementById('archiveConfirmModal')!.classList.contains('visible')).toBe(false);
+  });
+
+  it('shows with correct title and body text', async () => {
+    const { ArchiveConfirmModal } = await import('../../components/ArchiveConfirmModal.js');
+    const modal = new ArchiveConfirmModal();
+    modal.show('Delete June 2026?', '5 log entries and 2 todos will be permanently deleted.', vi.fn());
+    expect(document.getElementById('archiveConfirmModal')!.classList.contains('visible')).toBe(true);
+    expect(document.getElementById('archiveConfirmTitle')!.textContent).toBe('Delete June 2026?');
+    expect(document.getElementById('archiveConfirmBody')!.textContent).toContain('5 log entries');
+    modal.hide();
+  });
+
+  it('hides when cancel is clicked', async () => {
+    const { ArchiveConfirmModal } = await import('../../components/ArchiveConfirmModal.js');
+    const modal = new ArchiveConfirmModal();
+    modal.show('Delete?', 'body', vi.fn());
+    document.getElementById('archiveConfirmCancelBtn')!.click();
+    expect(document.getElementById('archiveConfirmModal')!.classList.contains('visible')).toBe(false);
+  });
+
+  it('calls onConfirm and hides when delete is clicked', async () => {
+    const { ArchiveConfirmModal } = await import('../../components/ArchiveConfirmModal.js');
+    const modal = new ArchiveConfirmModal();
+    const onConfirm = vi.fn();
+    modal.show('Delete?', 'body', onConfirm);
+    document.getElementById('archiveConfirmDeleteBtn')!.click();
+    expect(onConfirm).toHaveBeenCalledOnce();
+    expect(document.getElementById('archiveConfirmModal')!.classList.contains('visible')).toBe(false);
+  });
+
+  it('does not call onConfirm when cancel is clicked', async () => {
+    const { ArchiveConfirmModal } = await import('../../components/ArchiveConfirmModal.js');
+    const modal = new ArchiveConfirmModal();
+    const onConfirm = vi.fn();
+    modal.show('Delete?', 'body', onConfirm);
+    document.getElementById('archiveConfirmCancelBtn')!.click();
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });

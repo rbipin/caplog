@@ -11,8 +11,9 @@ export class ArchiveConfirmModal {
 
     document.getElementById('archiveConfirmCancelBtn')!.addEventListener('click', () => this.hide());
     document.getElementById('archiveConfirmDeleteBtn')!.addEventListener('click', () => {
+      const cb = this.onConfirm;
       this.hide();
-      this.onConfirm?.();
+      cb?.();
     });
   }
 

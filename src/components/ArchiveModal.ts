@@ -1,61 +1,8 @@
-import { query } from '../db.js';
-
-interface DayData {
-  date: string;
-  entryCount: number;
-  doneCount: number;
-}
-
-interface WeekData {
-  weekStart: string;
-  days: DayData[];
-  totalEntries: number;
-  totalDone: number;
-}
-
-export function getWeekStart(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
-}
-
-export function buildWeeks(
-  entryCounts: Record<string, number>,
-  doneCounts: Record<string, number>,
-  year: number
-): Map<string, WeekData> {
-  const weeks = new Map<string, WeekData>();
-
-  for (const [date, entryCount] of Object.entries(entryCounts)) {
-    const weekStart = getWeekStart(date);
-    if (!weeks.has(weekStart)) {
-      weeks.set(weekStart, { weekStart, days: [], totalEntries: 0, totalDone: 0 });
-    }
-    const week = weeks.get(weekStart)!;
-    week.totalEntries += entryCount;
-    week.totalDone += doneCounts[date] ?? 0;
-    week.days.push({ date, entryCount, doneCount: doneCounts[date] ?? 0 });
-  }
-
-  // Fill Mon–Fri skeletons for days with no entries (within the given year only)
-  for (const week of weeks.values()) {
-    const existing = new Set(week.days.map(d => d.date));
-    const mon = new Date(week.weekStart + 'T00:00:00');
-    for (let i = 0; i < 5; i++) {
-      const d = new Date(mon);
-      d.setDate(mon.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
-      if (!existing.has(dateStr) && d.getFullYear() === year) {
-        week.days.push({ date: dateStr, entryCount: 0, doneCount: 0 });
-      }
-    }
-    week.days.sort((a, b) => b.date.localeCompare(a.date));
-  }
-
-  return weeks;
-}
+import { query, execute } from '../db.js';
+import { parseLocalDate, getToday } from '../utils.js';
+import type { ArchiveConfirmModal } from './ArchiveConfirmModal.js';
+import { buildWeeks } from '../archiveUtils.js';
+import type { DayData, WeekData } from '../archiveUtils.js';
 
 export class ArchiveModal {
   private overlay: HTMLElement;
@@ -67,13 +14,16 @@ export class ArchiveModal {
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
   private searchSeq = 0;
 
-  constructor(private onDaySelect: (date: string) => void) {
+  constructor(
+    private onDaySelect: (date: string) => void,
+    private confirmModal: ArchiveConfirmModal
+  ) {
     this.overlay = document.getElementById('archiveModal')!;
     this.body = document.getElementById('archiveBody')!;
     this.searchInput = document.getElementById('archiveSearchInput') as HTMLInputElement;
     this.yearLabel = document.getElementById('archiveYearLabel')!;
     this.currentYear = new Date().getFullYear();
-    this.today = new Date().toISOString().split('T')[0];
+    this.today = getToday();
 
     document.getElementById('archiveCloseBtn')!.addEventListener('click', () => this.hide());
     document.addEventListener('keydown', (e) => {
@@ -140,16 +90,17 @@ export class ArchiveModal {
     const sorted = Array.from(weeks.entries()).sort((a, b) => b[0].localeCompare(a[0]));
 
     let lastMonth = '';
-    for (const [weekStart, week] of sorted) {
+    for (const [, week] of sorted) {
       const yearStr = String(this.currentYear);
       const firstInYear = week.days
         .filter(d => d.date.startsWith(yearStr))
         .sort((a, b) => a.date.localeCompare(b.date))[0];
-      const monthKey = firstInYear ? firstInYear.date.substring(0, 7) : weekStart.substring(0, 7);
+      const monthKey = firstInYear ? firstInYear.date.substring(0, 7) : week.weekStart.substring(0, 7);
+
       if (monthKey !== lastMonth) {
         lastMonth = monthKey;
         const [yr, mo] = monthKey.split('-');
-        const label = new Date(`${yr}-${mo}-01T00:00:00`).toLocaleString('en-US', {
+        const label = parseLocalDate(`${yr}-${mo}-01`).toLocaleString('en-US', {
           month: 'long', year: 'numeric',
         });
         const divider = document.createElement('div');
@@ -157,16 +108,20 @@ export class ArchiveModal {
         divider.innerHTML = `
           <div class="archive-month-line"></div>
           <div class="archive-month-label">${label}</div>
+          <button class="archive-clean-btn" title="Delete ${label}">🗑</button>
           <div class="archive-month-line"></div>
         `;
+        divider.querySelector('.archive-clean-btn')!.addEventListener('click', () => {
+          void this.cleanMonth(monthKey);
+        });
         this.body.appendChild(divider);
       }
-      this.body.appendChild(this.renderWeekCard(weekStart, week));
+      this.body.appendChild(this.renderWeekCard(week.weekStart, week));
     }
   }
 
   private renderWeekCard(weekStart: string, week: WeekData): HTMLElement {
-    const d = new Date(weekStart + 'T00:00:00');
+    const d = parseLocalDate(weekStart);
     const weekLabel = `Week of ${d.toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
 
     const statsHtml = [
@@ -180,10 +135,19 @@ export class ArchiveModal {
     card.innerHTML = `
       <div class="archive-week-header">
         <span class="archive-week-label">${weekLabel}</span>
-        <div class="archive-week-stats">${statsHtml}</div>
+        <div class="archive-week-stats">
+          ${statsHtml}
+          ${week.totalEntries > 0 ? `<button class="archive-clean-btn" title="Delete this week">🗑</button>` : ''}
+        </div>
       </div>
       <div class="archive-week-days"></div>
     `;
+
+    if (week.totalEntries > 0) {
+      card.querySelector('.archive-clean-btn')!.addEventListener('click', () => {
+        void this.cleanWeek(weekStart);
+      });
+    }
 
     const daysContainer = card.querySelector('.archive-week-days')!;
     for (const day of week.days) {
@@ -193,7 +157,7 @@ export class ArchiveModal {
   }
 
   private renderDayTile(day: DayData): HTMLElement {
-    const d = new Date(day.date + 'T00:00:00');
+    const d = parseLocalDate(day.date);
     const dow = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()];
     const isEmpty = day.entryCount === 0;
     const isToday = day.date === this.today;
@@ -208,14 +172,72 @@ export class ArchiveModal {
       <div class="archive-day-dow">${dow}</div>
       <div class="archive-day-num">${d.getDate()}</div>
       <div class="archive-day-count">${isEmpty ? '—' : `${day.entryCount} entries`}</div>
+      ${!isEmpty ? `<button class="archive-clean-btn" title="Delete ${day.date}">🗑</button>` : ''}
     `;
 
     if (!isEmpty) {
-      tile.addEventListener('click', () => {
+      tile.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).classList.contains('archive-clean-btn')) return;
         this.onDaySelect(day.date);
+      });
+      tile.querySelector('.archive-clean-btn')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        void this.cleanDay(day.date);
       });
     }
     return tile;
+  }
+
+  private async cleanRange(
+    label: string,
+    entryWhere: string,
+    todoWhere: string,
+    params: (string | number)[]
+  ): Promise<void> {
+    const [entryRows, todoRows] = await Promise.all([
+      query<{ count: number }>(`SELECT COUNT(*) as count FROM log_entries WHERE ${entryWhere}`, params),
+      query<{ count: number }>(`SELECT COUNT(*) as count FROM todos WHERE ${todoWhere}`, params),
+    ]);
+    const entryCount = entryRows[0]?.count ?? 0;
+    const todoCount = todoRows[0]?.count ?? 0;
+
+    this.confirmModal.show(
+      `Delete ${label}?`,
+      `${entryCount} log entries and ${todoCount} todos will be permanently deleted. This cannot be undone.`,
+      async () => {
+        await Promise.all([
+          execute(`DELETE FROM log_entries WHERE ${entryWhere}`, params),
+          execute(`DELETE FROM todos WHERE ${todoWhere}`, params),
+        ]);
+        void this.load();
+      }
+    );
+  }
+
+  private async cleanDay(date: string): Promise<void> {
+    const label = parseLocalDate(date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    await this.cleanRange(label, 'date = ?', 'DATE(created_at) = ?', [date]);
+  }
+
+  private async cleanWeek(weekStart: string): Promise<void> {
+    const start = parseLocalDate(weekStart);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const endDate = end.toISOString().split('T')[0];
+    const label = `Week of ${parseLocalDate(weekStart).toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
+    await this.cleanRange(
+      label,
+      'date >= ? AND date <= ?',
+      'DATE(created_at) >= ? AND DATE(created_at) <= ?',
+      [weekStart, endDate]
+    );
+  }
+
+  private async cleanMonth(yearMonth: string): Promise<void> {
+    const [yr, mo] = yearMonth.split('-');
+    const pattern = `${yearMonth}-%`;
+    const label = parseLocalDate(`${yr}-${mo}-01`).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    await this.cleanRange(label, 'date LIKE ?', 'DATE(created_at) LIKE ?', [pattern]);
   }
 
   private async applySearch(): Promise<void> {

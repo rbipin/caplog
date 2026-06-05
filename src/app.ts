@@ -14,6 +14,7 @@ import { TodoPanel } from './components/TodoPanel.js';
 import { Sidebar } from './components/Sidebar.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { ArchiveModal } from './components/ArchiveModal.js';
+import { ArchiveConfirmModal } from './components/ArchiveConfirmModal.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 type LogCommand = Extract<ParsedCommand, { type: 'log' }>;
@@ -29,6 +30,7 @@ class App {
   private sidebar: Sidebar;
   private inputHandler!: InputHandler;
   private archive: ArchiveModal;
+  private archiveConfirm: ArchiveConfirmModal;
   private adapter: LLMAdapter | null = null;
   readonly ready: Promise<void>;
 
@@ -37,7 +39,8 @@ class App {
     this.todoPanel = new TodoPanel();
     this.modal = new LogModal();
     this.settings = new SettingsModal();
-    this.archive = new ArchiveModal((date) => { void this.openDayModal(date); });
+    this.archiveConfirm = new ArchiveConfirmModal();
+    this.archive = new ArchiveModal((date) => { void this.openDayModal(date); }, this.archiveConfirm);
     this.sidebar = new Sidebar((date) => { void this.openDayModal(date); });
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
     this.chatArea.setAdapterGetter(() => this.adapter);

@@ -46,6 +46,12 @@ const FULL_DOM = `<div id="app">
     <button id="archiveCloseBtn">✕</button>
     <div id="archiveBody"></div>
   </div>
+  <div class="archive-confirm-overlay" id="archiveConfirmModal">
+    <div class="archive-confirm-title" id="archiveConfirmTitle"></div>
+    <div class="archive-confirm-body" id="archiveConfirmBody"></div>
+    <button id="archiveConfirmCancelBtn">Cancel</button>
+    <button id="archiveConfirmDeleteBtn">Delete</button>
+  </div>
 </div>`;
 
 function makeTodo(overrides: Partial<TodoItem> = {}): TodoItem {
