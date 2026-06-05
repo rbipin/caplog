@@ -1073,6 +1073,7 @@ details.todo-archive[open] > summary.todo-archive-summary::before {
 }
 
 .archive-day-tile {
+  position: relative;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 2px solid transparent;
