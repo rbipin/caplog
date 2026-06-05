@@ -32,6 +32,7 @@ class App {
   private archive: ArchiveModal;
   private archiveConfirm: ArchiveConfirmModal;
   private adapter: LLMAdapter | null = null;
+  private chatDays: number = 3;
   readonly ready: Promise<void>;
 
   constructor() {
@@ -45,7 +46,7 @@ class App {
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
     this.chatArea.setAdapterGetter(() => this.adapter);
     this.todoPanel.setOnComplete(() => this.sidebar.refresh());
-    this.settings.setOnSave(() => { void this.refreshAdapter(); });
+    this.settings.setOnSave(() => { void this.applyChatDays().then(() => this.refreshAdapter()); });
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
     this.ready = this.init();
@@ -54,8 +55,8 @@ class App {
   private async init(): Promise<void> {
     try {
       await runLLMMigration();
-      const chatDays = parseInt((await getSetting('chat_days')) ?? '3') || 3;
-      await Promise.all([this.todoPanel.load(), this.loadRecentEntries(chatDays)]);
+      await this.applyChatDays();
+      await this.loadRecentEntries(this.chatDays);
       this.adapter = await getAdapter();
     } catch (err) {
       console.error('Startup load failed:', err);
@@ -66,6 +67,12 @@ class App {
     }
   }
 
+  private async applyChatDays(): Promise<void> {
+    this.chatDays = parseInt((await getSetting('chat_days')) ?? '3') || 3;
+    await this.sidebar.refresh(this.chatDays);
+    await this.todoPanel.load(this.chatDays);
+  }
+
   private async refreshAdapter(): Promise<void> {
     this.adapter = await getAdapter();
   }
@@ -73,9 +80,12 @@ class App {
   private async loadRecentEntries(days: number): Promise<void> {
     const today = getToday();
 
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffDate = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
     const dateRows = await query<{ date: string }>(
-      'SELECT DISTINCT date FROM log_entries ORDER BY date DESC LIMIT ?',
-      [days]
+      'SELECT DISTINCT date FROM log_entries WHERE date >= ? ORDER BY date DESC',
+      [cutoffDate]
     );
 
     const dates = dateRows.map((r) => r.date);
@@ -131,7 +141,7 @@ class App {
 
     const [entries, todos] = await Promise.all([
       query<LogEntry>('SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC', [date]),
-      query<TodoItem>('SELECT * FROM todos WHERE completed_at LIKE ? ORDER BY completed_at ASC', [date + '%']),
+      query<TodoItem>('SELECT * FROM todos WHERE created_at LIKE ? ORDER BY created_at ASC', [date + '%']),
     ]);
 
     const items = entries.map((e) => ({
@@ -195,7 +205,7 @@ class App {
   }
 
   private async handleLog(cmd: LogCommand, time: string): Promise<void> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getToday();
 
     let formatted = `<ul><li>${escapeHtml(cmd.text)}</li></ul>`;
 

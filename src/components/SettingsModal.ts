@@ -67,7 +67,6 @@ export class SettingsModal {
         deleteSetting('llm_api_key'),
         deleteSetting('llm_model'),
         deleteSetting('llm_base_url'),
-        deleteSetting('chat_days'),
       ]);
       this.onSaveCallback?.();
       this.close();

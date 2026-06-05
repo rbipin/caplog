@@ -1,4 +1,4 @@
-import { TodoItem } from './types.js';
+import type { TodoItem } from './types.js';
 import { getToday } from './utils.js';
 
 export type TodoSection = {
@@ -19,15 +19,11 @@ export function todoStatus(todo: TodoItem): 'completed' | 'important' | 'overdue
 
 export function getTodoSections(): TodoSection[] {
   const today = getToday();
-  const archiveCutoff = new Date();
-  archiveCutoff.setDate(archiveCutoff.getDate() - 7);
-  const cutoffIso = archiveCutoff.toISOString();
 
   return [
-    { label: 'Important', filter: (t) => !t.is_completed && !!t.is_important },
+    { label: 'Important',     filter: (t) => !t.is_completed && !!t.is_important },
     { label: 'Due / Overdue', filter: (t) => !t.is_completed && !t.is_important && !!t.deadline && t.deadline <= today },
-    { label: 'Open', filter: (t) => !t.is_completed && !t.is_important && (!t.deadline || t.deadline > today) },
-    { label: 'Completed', filter: (t) => !!t.is_completed && !!t.completed_at && t.completed_at >= cutoffIso },
-    { label: 'Archive', filter: (t) => !!t.is_completed && (!t.completed_at || t.completed_at < cutoffIso), collapsed: true },
+    { label: 'Open',          filter: (t) => !t.is_completed && !t.is_important && (!t.deadline || t.deadline > today) },
+    { label: 'Completed',     filter: (t) => !!t.is_completed },
   ];
 }

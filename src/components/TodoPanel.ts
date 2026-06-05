@@ -1,5 +1,5 @@
 import { query, execute } from '../db.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, getToday } from '../utils.js';
 import { todoStatus, getTodoSections } from '../todoLogic.js';
 import type { TodoItem } from '../types.js';
 
@@ -7,6 +7,7 @@ export class TodoPanel {
   private listEl: HTMLElement;
   private countEl: HTMLElement;
   private onComplete: (() => void) | null = null;
+  private cutoffDays: number | undefined;
 
   constructor() {
     this.listEl = document.getElementById('todoList')!;
@@ -17,10 +18,24 @@ export class TodoPanel {
     this.onComplete = cb;
   }
 
-  async load(): Promise<void> {
-    const todos = await query<TodoItem>(
-      'SELECT * FROM todos ORDER BY is_important DESC, CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline ASC, created_at ASC'
-    );
+  async load(days?: number): Promise<void> {
+    if (days !== undefined) this.cutoffDays = days;
+
+    let todos: TodoItem[];
+    if (this.cutoffDays !== undefined) {
+      const today = getToday();
+      const d = new Date(today + 'T00:00:00');
+      d.setDate(d.getDate() - this.cutoffDays);
+      const cutoff = d.toISOString().split('T')[0];
+      todos = await query<TodoItem>(
+        'SELECT * FROM todos WHERE is_completed = 0 OR (is_completed = 1 AND completed_at >= ?) ORDER BY is_important DESC, CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline ASC, created_at ASC',
+        [cutoff]
+      );
+    } else {
+      todos = await query<TodoItem>(
+        'SELECT * FROM todos ORDER BY is_important DESC, CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline ASC, created_at ASC'
+      );
+    }
     this.render(todos);
   }
 
@@ -124,7 +139,7 @@ export class TodoPanel {
       if (status === 'important') {
         parts.push('<span class="todo-badge important">important</span>');
       } else if (status === 'overdue') {
-        parts.push('<span class="todo-badge overdue">due soon</span>');
+        parts.push('<span class="todo-badge overdue">overdue</span>');
       }
       return parts.length ? `<div class="todo-meta">${parts.join('')}</div>` : '';
     })();

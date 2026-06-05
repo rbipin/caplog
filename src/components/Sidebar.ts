@@ -5,17 +5,18 @@ import type { DayStats } from '../types.js';
 export class Sidebar {
   private monthLabel: HTMLElement;
   private dayList: HTMLElement;
+  private days: number = 3;
 
   constructor(private onDaySelect: (date: string) => void) {
     this.monthLabel = document.getElementById('sidebarMonthLabel')!;
     this.dayList = document.getElementById('dayList')!;
     const now = new Date();
     this.monthLabel.textContent = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    void this.load();
   }
 
-  refresh(): void {
-    void this.load();
+  refresh(days?: number): Promise<void> {
+    if (days !== undefined) this.days = days;
+    return this.load();
   }
 
   private async load(): Promise<void> {
@@ -28,8 +29,8 @@ export class Sidebar {
       FROM log_entries l
       GROUP BY l.date
       ORDER BY l.date DESC
-      LIMIT 30
-    `);
+      LIMIT ?
+    `, [this.days]);
 
     this.dayList.innerHTML = '';
     stats.forEach((s, i) => this.dayList.appendChild(this.renderEntry(s, i === 0)));

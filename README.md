@@ -95,8 +95,9 @@ src/
 │   ├── ChatArea.ts         ← Central log feed
 │   ├── InputHandler.ts     ← Textarea, submit, command highlighting
 │   ├── ArchiveModal.ts     ← Year-view calendar archive + keyword search
+│   ├── ArchiveConfirmModal.ts ← Confirmation dialog for archive deletion
 │   ├── LogModal.ts         ← Monthly log overlay
-│   ├── SettingsModal.ts    ← LLM provider config
+│   ├── SettingsModal.ts    ← LLM provider/model/chat_days config
 │   ├── Sidebar.ts          ← Past days list
 │   └── TodoPanel.ts        ← Right-panel todo list
 ├── llm/
@@ -155,8 +156,18 @@ SQLite database is managed by `tauri-plugin-sql`. Migrations run automatically a
 ### `settings`
 | Column | Type | Notes |
 |--------|------|-------|
-| `key` | TEXT PK | `llm_provider`, `llm_api_key`, `llm_model`, `llm_base_url` |
+| `key` | TEXT PK | `llm_provider`, `llm_api_key`, `llm_model`, `llm_base_url`, `chat_days` |
 | `value` | TEXT | |
+
+**Known keys:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `llm_provider` | — | `anthropic` or `openai` |
+| `llm_api_key` | — | API key for the selected provider |
+| `llm_model` | — | Model name (e.g. `claude-haiku-4-5-20251001`) |
+| `llm_base_url` | — | Base URL for OpenAI-compatible endpoints |
+| `chat_days` | `3` | How many days of history to show in the sidebar and completed-todo cutoff |
 
 ---
 
@@ -170,6 +181,7 @@ Open **Settings** (gear icon) and configure:
 | API Key | Your API key |
 | Model | e.g. `claude-haiku-4-5-20251001` or `gpt-4o-mini` |
 | Base URL | OpenAI-compatible endpoint only (e.g. for local models) |
+| Show days | Number of past days to show in the sidebar and completed-todo list (default: 3) |
 
 LLM is **optional** — if not configured, entries are saved as plain text wrapped in `<ul><li>`.
 
