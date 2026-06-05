@@ -1,7 +1,7 @@
 import { initDB, query, execute, getSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
-import { getAdapter } from './llm/factory.js';
+import { getAdapter, runLLMMigration } from './llm/factory.js';
 import { escapeHtml, stripHtml } from './utils.js';
 import type { LLMAdapter } from './llm/adapter.js';
 import type { LogEntry, TodoItem, FeedItem } from './types.js';
@@ -50,6 +50,7 @@ class App {
 
   private async init(): Promise<void> {
     try {
+      await runLLMMigration();
       const chatDays = parseInt((await getSetting('chat_days')) ?? '3') || 3;
       await Promise.all([this.todoPanel.load(), this.loadRecentEntries(chatDays)]);
       this.adapter = await getAdapter();

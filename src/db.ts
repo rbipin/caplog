@@ -27,3 +27,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
     [key, value]
   );
 }
+
+export async function deleteSetting(key: string): Promise<void> {
+  await execute('DELETE FROM settings WHERE key = ?', [key]);
+}

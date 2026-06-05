@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 
-const { executeMock, queryMock, getSettingMock, setSettingMock } = vi.hoisted(() => ({
+const { executeMock, queryMock, getSettingMock, setSettingMock, deleteSettingMock } = vi.hoisted(() => ({
   executeMock: vi.fn().mockResolvedValue(undefined),
   queryMock: vi.fn().mockResolvedValue([]),
   getSettingMock: vi.fn().mockResolvedValue(null),
   setSettingMock: vi.fn().mockResolvedValue(undefined),
+  deleteSettingMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../db.js', () => ({
@@ -13,8 +14,12 @@ vi.mock('../../db.js', () => ({
   execute: executeMock,
   getSetting: getSettingMock,
   setSetting: setSettingMock,
+  deleteSetting: deleteSettingMock,
 }));
-vi.mock('../../llm/factory.js', () => ({ getAdapter: vi.fn().mockResolvedValue(null) }));
+vi.mock('../../llm/factory.js', () => ({
+  getAdapter: vi.fn().mockResolvedValue(null),
+  runLLMMigration: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('../../export.js', () => ({ exportMarkdown: vi.fn() }));
 
 const FULL_DOM = `<div id="app">
@@ -69,6 +74,7 @@ describe('SettingsModal', () => {
     vi.clearAllMocks();
     executeMock.mockResolvedValue(undefined);
     setSettingMock.mockResolvedValue(undefined);
+    deleteSettingMock.mockResolvedValue(undefined);
     getSettingMock.mockResolvedValue(null);
     queryMock.mockResolvedValue([]);
     resetInputs();
@@ -120,8 +126,12 @@ describe('SettingsModal', () => {
     document.getElementById('saveSettingsBtn')!.click();
     await new Promise(r => setTimeout(r, 30));
 
-    const deleteCalls = executeMock.mock.calls.filter(([sql]) => String(sql).includes('DELETE FROM settings'));
-    expect(deleteCalls.length).toBe(5);
+    expect(deleteSettingMock).toHaveBeenCalledTimes(5);
+    expect(deleteSettingMock).toHaveBeenCalledWith('llm_provider');
+    expect(deleteSettingMock).toHaveBeenCalledWith('llm_api_key');
+    expect(deleteSettingMock).toHaveBeenCalledWith('llm_model');
+    expect(deleteSettingMock).toHaveBeenCalledWith('llm_base_url');
+    expect(deleteSettingMock).toHaveBeenCalledWith('chat_days');
   });
 
   it('save() with valid inputs writes provider, key, model, baseUrl, and chat_days to db', async () => {

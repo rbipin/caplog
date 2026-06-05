@@ -1,4 +1,4 @@
-import { execute, getSetting, setSetting } from '../db.js';
+import { deleteSetting, getSetting, setSetting } from '../db.js';
 
 export class SettingsModal {
   private overlay: HTMLElement;
@@ -63,11 +63,11 @@ export class SettingsModal {
 
     if (!apiKey) {
       await Promise.all([
-        execute('DELETE FROM settings WHERE key = ?', ['llm_provider']),
-        execute('DELETE FROM settings WHERE key = ?', ['llm_api_key']),
-        execute('DELETE FROM settings WHERE key = ?', ['llm_model']),
-        execute('DELETE FROM settings WHERE key = ?', ['llm_base_url']),
-        execute('DELETE FROM settings WHERE key = ?', ['chat_days']),
+        deleteSetting('llm_provider'),
+        deleteSetting('llm_api_key'),
+        deleteSetting('llm_model'),
+        deleteSetting('llm_base_url'),
+        deleteSetting('chat_days'),
       ]);
       this.onSaveCallback?.();
       this.close();
