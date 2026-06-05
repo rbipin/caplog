@@ -1,62 +1,8 @@
 import { query, execute } from '../db.js';
 import { parseLocalDate, getToday } from '../utils.js';
 import type { ArchiveConfirmModal } from './ArchiveConfirmModal.js';
-
-interface DayData {
-  date: string;
-  entryCount: number;
-  doneCount: number;
-}
-
-interface WeekData {
-  weekStart: string;
-  days: DayData[];
-  totalEntries: number;
-  totalDone: number;
-}
-
-export function getWeekStart(dateStr: string): string {
-  const d = parseLocalDate(dateStr);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
-}
-
-export function buildWeeks(
-  entryCounts: Record<string, number>,
-  doneCounts: Record<string, number>,
-  year: number
-): Map<string, WeekData> {
-  const weeks = new Map<string, WeekData>();
-
-  for (const [date, entryCount] of Object.entries(entryCounts)) {
-    const weekStart = getWeekStart(date);
-    if (!weeks.has(weekStart)) {
-      weeks.set(weekStart, { weekStart, days: [], totalEntries: 0, totalDone: 0 });
-    }
-    const week = weeks.get(weekStart)!;
-    week.totalEntries += entryCount;
-    week.totalDone += doneCounts[date] ?? 0;
-    week.days.push({ date, entryCount, doneCount: doneCounts[date] ?? 0 });
-  }
-
-  for (const week of weeks.values()) {
-    const existing = new Set(week.days.map(d => d.date));
-    const mon = parseLocalDate(week.weekStart);
-    for (let i = 0; i < 5; i++) {
-      const d = new Date(mon);
-      d.setDate(mon.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
-      if (!existing.has(dateStr) && d.getFullYear() === year) {
-        week.days.push({ date: dateStr, entryCount: 0, doneCount: 0 });
-      }
-    }
-    week.days.sort((a, b) => b.date.localeCompare(a.date));
-  }
-
-  return weeks;
-}
+import { buildWeeks } from '../archiveUtils.js';
+import type { DayData, WeekData } from '../archiveUtils.js';
 
 export class ArchiveModal {
   private overlay: HTMLElement;
@@ -239,26 +185,35 @@ export class ArchiveModal {
     return tile;
   }
 
-  private async cleanDay(date: string): Promise<void> {
+  private async cleanRange(
+    label: string,
+    entryWhere: string,
+    todoWhere: string,
+    params: (string | number)[]
+  ): Promise<void> {
     const [entryRows, todoRows] = await Promise.all([
-      query<{ count: number }>('SELECT COUNT(*) as count FROM log_entries WHERE date = ?', [date]),
-      query<{ count: number }>('SELECT COUNT(*) as count FROM todos WHERE DATE(created_at) = ?', [date]),
+      query<{ count: number }>(`SELECT COUNT(*) as count FROM log_entries WHERE ${entryWhere}`, params),
+      query<{ count: number }>(`SELECT COUNT(*) as count FROM todos WHERE ${todoWhere}`, params),
     ]);
     const entryCount = entryRows[0]?.count ?? 0;
     const todoCount = todoRows[0]?.count ?? 0;
-    const label = parseLocalDate(date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     this.confirmModal.show(
       `Delete ${label}?`,
       `${entryCount} log entries and ${todoCount} todos will be permanently deleted. This cannot be undone.`,
       async () => {
         await Promise.all([
-          execute('DELETE FROM log_entries WHERE date = ?', [date]),
-          execute('DELETE FROM todos WHERE DATE(created_at) = ?', [date]),
+          execute(`DELETE FROM log_entries WHERE ${entryWhere}`, params),
+          execute(`DELETE FROM todos WHERE ${todoWhere}`, params),
         ]);
         void this.load();
       }
     );
+  }
+
+  private async cleanDay(date: string): Promise<void> {
+    const label = parseLocalDate(date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    await this.cleanRange(label, 'date = ?', 'DATE(created_at) = ?', [date]);
   }
 
   private async cleanWeek(weekStart: string): Promise<void> {
@@ -266,51 +221,20 @@ export class ArchiveModal {
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     const endDate = end.toISOString().split('T')[0];
-
-    const [entryRows, todoRows] = await Promise.all([
-      query<{ count: number }>('SELECT COUNT(*) as count FROM log_entries WHERE date >= ? AND date <= ?', [weekStart, endDate]),
-      query<{ count: number }>('SELECT COUNT(*) as count FROM todos WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?', [weekStart, endDate]),
-    ]);
-    const entryCount = entryRows[0]?.count ?? 0;
-    const todoCount = todoRows[0]?.count ?? 0;
-    const weekLabel = `Week of ${parseLocalDate(weekStart).toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
-
-    this.confirmModal.show(
-      `Delete ${weekLabel}?`,
-      `${entryCount} log entries and ${todoCount} todos will be permanently deleted. This cannot be undone.`,
-      async () => {
-        await Promise.all([
-          execute('DELETE FROM log_entries WHERE date >= ? AND date <= ?', [weekStart, endDate]),
-          execute('DELETE FROM todos WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?', [weekStart, endDate]),
-        ]);
-        void this.load();
-      }
+    const label = `Week of ${parseLocalDate(weekStart).toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
+    await this.cleanRange(
+      label,
+      'date >= ? AND date <= ?',
+      'DATE(created_at) >= ? AND DATE(created_at) <= ?',
+      [weekStart, endDate]
     );
   }
 
   private async cleanMonth(yearMonth: string): Promise<void> {
     const [yr, mo] = yearMonth.split('-');
     const pattern = `${yearMonth}-%`;
-
-    const [entryRows, todoRows] = await Promise.all([
-      query<{ count: number }>('SELECT COUNT(*) as count FROM log_entries WHERE date LIKE ?', [pattern]),
-      query<{ count: number }>('SELECT COUNT(*) as count FROM todos WHERE DATE(created_at) LIKE ?', [pattern]),
-    ]);
-    const entryCount = entryRows[0]?.count ?? 0;
-    const todoCount = todoRows[0]?.count ?? 0;
     const label = parseLocalDate(`${yr}-${mo}-01`).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-
-    this.confirmModal.show(
-      `Delete ${label}?`,
-      `${entryCount} log entries and ${todoCount} todos will be permanently deleted. This cannot be undone.`,
-      async () => {
-        await Promise.all([
-          execute('DELETE FROM log_entries WHERE date LIKE ?', [pattern]),
-          execute('DELETE FROM todos WHERE DATE(created_at) LIKE ?', [pattern]),
-        ]);
-        void this.load();
-      }
-    );
+    await this.cleanRange(label, 'date LIKE ?', 'DATE(created_at) LIKE ?', [pattern]);
   }
 
   private async applySearch(): Promise<void> {
