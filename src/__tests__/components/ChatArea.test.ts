@@ -25,6 +25,7 @@ const FULL_DOM = `<div id="app">
   <div id="sidebarMonthLabel"></div><div id="dayList"></div>
   <div id="chatArea"></div>
   <div id="todoList"></div><div id="todoCount"></div>
+  <span id="aiStatusPill" class="pill pill-yellow"></span>
   <div id="headerDate"></div>
   <textarea id="chatInput"></textarea><button id="sendBtn">Send</button>
   <button id="sidebarToggleBtn"></button><button id="viewLogBtn"></button>
@@ -176,5 +177,44 @@ describe('ChatArea', () => {
 
     expect(executeMock).toHaveBeenCalledWith('DELETE FROM log_entries WHERE id = ?', [77]);
     expect(document.getElementById('chatArea')!.contains(last)).toBe(false);
+  });
+});
+
+describe('AI status pill', () => {
+  async function bootApp(): Promise<void> {
+    vi.resetModules();
+    await import('../../app.js');
+    window.dispatchEvent(new Event('DOMContentLoaded'));
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = FULL_DOM;
+    vi.clearAllMocks();
+    queryMock.mockResolvedValue([]);
+  });
+
+  it('shows pill-yellow and "No AI" when adapter is null', async () => {
+    const { getAdapter } = await import('../../llm/factory.js');
+    vi.mocked(getAdapter).mockResolvedValue(null);
+
+    await bootApp();
+
+    const pill = document.getElementById('aiStatusPill')!;
+    expect(pill.classList.contains('pill-yellow')).toBe(true);
+    expect(pill.classList.contains('pill-green')).toBe(false);
+    expect(pill.textContent).toContain('No AI');
+  });
+
+  it('shows pill-green and "AI Active" when adapter is non-null', async () => {
+    const { getAdapter } = await import('../../llm/factory.js');
+    vi.mocked(getAdapter).mockResolvedValue({ complete: vi.fn().mockResolvedValue('') } as any);
+
+    await bootApp();
+
+    const pill = document.getElementById('aiStatusPill')!;
+    expect(pill.classList.contains('pill-green')).toBe(true);
+    expect(pill.classList.contains('pill-yellow')).toBe(false);
+    expect(pill.textContent).toContain('AI Active');
   });
 });

@@ -58,6 +58,7 @@ class App {
       await this.applyChatDays();
       await this.loadRecentEntries(this.chatDays);
       this.adapter = await getAdapter();
+      this.updateAiPill();
     } catch (err) {
       console.error('Startup load failed:', err);
       this.chatArea.append({
@@ -75,6 +76,19 @@ class App {
 
   private async refreshAdapter(): Promise<void> {
     this.adapter = await getAdapter();
+    this.updateAiPill();
+  }
+
+  private updateAiPill(): void {
+    const pill = document.getElementById('aiStatusPill');
+    if (!pill) return;
+    if (this.adapter) {
+      pill.className = 'pill pill-green';
+      pill.innerHTML = '<span class="pill-dot"></span>AI Active';
+    } else {
+      pill.className = 'pill pill-yellow';
+      pill.innerHTML = '<span class="pill-icon">⚠</span>No AI';
+    }
   }
 
   private async loadRecentEntries(days: number): Promise<void> {
