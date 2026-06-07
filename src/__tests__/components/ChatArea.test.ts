@@ -20,6 +20,9 @@ vi.mock('../../llm/factory.js', () => ({
 }));
 vi.mock('../../export.js', () => ({ exportMarkdown: vi.fn() }));
 vi.mock('../../ai.js', () => ({ formatLogEntry: vi.fn().mockResolvedValue('<ul><li>formatted</li></ul>') }));
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: vi.fn(() => ({ show: vi.fn() })),
+}));
 
 const FULL_DOM = `<div id="app">
   <div id="sidebarMonthLabel"></div><div id="dayList"></div>
