@@ -101,6 +101,39 @@ html, body {
   background: var(--accent-dim);
 }
 
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+.pill-green {
+  background: #0d2e1a;
+  border: 1px solid #1a5c32;
+  color: #4ade80;
+}
+.pill-yellow {
+  background: #2a1f00;
+  border: 1px solid #5c4200;
+  color: #fbbf24;
+}
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 4px #4ade80;
+  flex-shrink: 0;
+}
+.pill-icon {
+  font-size: 10px;
+}
+
 /* Sidebar toggle */
 .sidebar-toggle {
   background: none;
