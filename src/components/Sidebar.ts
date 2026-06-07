@@ -1,5 +1,5 @@
 import { query } from '../db.js';
-import { escapeHtml, parseLocalDate } from '../utils.js';
+import { escapeHtml, parseLocalDate, stripHtml } from '../utils.js';
 import type { DayStats } from '../types.js';
 
 export class Sidebar {
@@ -25,7 +25,7 @@ export class Sidebar {
         l.date,
         COUNT(l.id) AS log_count,
         (SELECT COUNT(*) FROM todos t WHERE t.completed_at LIKE l.date || '%') AS todo_done_count,
-        (SELECT raw_text FROM log_entries WHERE date = l.date ORDER BY created_at ASC LIMIT 1) AS preview
+        (SELECT formatted_text FROM log_entries WHERE date = l.date ORDER BY created_at ASC LIMIT 1) AS preview
       FROM log_entries l
       GROUP BY l.date
       ORDER BY l.date DESC
@@ -54,7 +54,7 @@ export class Sidebar {
         <div class="day-entry-num">${day}</div>
       </div>
       <div>
-        <div class="day-entry-preview">${escapeHtml(s.preview ?? '')}</div>
+        <div class="day-entry-preview">${escapeHtml(stripHtml(s.preview ?? ''))}</div>
         <div class="day-entry-meta">${metaTags.join('')}</div>
       </div>
     `;

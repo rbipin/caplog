@@ -63,4 +63,20 @@ describe('Sidebar', () => {
     expect(call).toBeDefined();
     expect(call![1]).toEqual([2]);
   });
+
+  it('renders preview as plain text stripped from formatted_text HTML', async () => {
+    queryMock.mockResolvedValue([{
+      date: '2026-06-01',
+      log_count: 1,
+      todo_done_count: 0,
+      preview: '<ul><li>Meeting notes</li></ul>',
+    }]);
+    const sidebar = new Sidebar(vi.fn());
+    await sidebar.refresh(3);
+
+    const preview = document.querySelector('.day-entry-preview');
+    expect(preview).not.toBeNull();
+    expect(preview!.textContent).toBe('Meeting notes');
+    expect(preview!.textContent).not.toContain('<');
+  });
 });
