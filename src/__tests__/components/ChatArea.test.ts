@@ -150,7 +150,7 @@ describe('ChatArea', () => {
   it('edit flow: Cancel restores original HTML', async () => {
     queryMock.mockResolvedValue([{ id: 66 }]);
     await submitLog('Cancelable entry');
-    const msgs = document.getElementById('chatArea')!.querySelectorAll('.msg');
+    const msgs = document.querySelector('.day-section[open]')!.querySelectorAll('.msg');
     const last = msgs[msgs.length - 1];
     const content = last.querySelector('.msg-content') as HTMLElement;
     const originalHtml = content.innerHTML;
@@ -168,7 +168,7 @@ describe('ChatArea', () => {
     queryMock.mockResolvedValueOnce([{ id: 77 }]); // SELECT id after insert
     await submitLog('Entry to delete');
 
-    const msgs = document.getElementById('chatArea')!.querySelectorAll('.msg');
+    const msgs = document.querySelector('.day-section[open]')!.querySelectorAll('.msg');
     const last = msgs[msgs.length - 1] as HTMLElement;
     const deleteBtn = last.querySelector('.msg-delete-btn') as HTMLElement;
     expect(deleteBtn).not.toBeNull();
