@@ -168,7 +168,7 @@ describe('ArchiveModal', () => {
   it('highlights matching day tiles on search', async () => {
     queryMock.mockImplementation(async (sql: string) => {
       if (sql.includes('log_entries') && sql.includes('COUNT')) return [{ date: '2026-06-03', entry_count: 2 }];
-      if (sql.includes('DISTINCT') && sql.includes('raw_text LIKE')) return [{ date: '2026-06-03' }];
+      if (sql.includes('DISTINCT') && sql.includes('formatted_text LIKE')) return [{ date: '2026-06-03' }];
       return [];
     });
     document.getElementById('archiveBtn')!.click();

@@ -251,7 +251,7 @@ export class ArchiveModal {
     }
 
     const matchingRows = await query<{ date: string }>(
-      'SELECT DISTINCT date FROM log_entries WHERE date LIKE ? AND raw_text LIKE ?',
+      'SELECT DISTINCT date FROM log_entries WHERE date LIKE ? AND formatted_text LIKE ?',
       [`${this.currentYear}-%`, `%${q}%`]
     );
     if (seq !== this.searchSeq) return;
