@@ -15,7 +15,7 @@ When AI is available, the AI-formatted text is the canonical log entry everywher
 ### What changes
 
 | Surface | Currently reads | After |
-|---|---|---|
+| --- | --- | --- |
 | Sidebar preview | `raw_text` (SQL subquery) | `formatted_text` → `stripHtml()` |
 | Archive search | `raw_text LIKE ?` | `formatted_text LIKE ?` |
 | Chat area display | `formatted_text` (main) + `raw_text` (original label) | unchanged |
@@ -59,24 +59,24 @@ When loading entries from DB into ChatArea, `rawInput` is currently set to `e.ra
 
 ## Feature 2: AI Status Pill
 
-### Problem
+### Pill Problem
 
 There is no visual indicator of whether AI summarization is configured. Users have no way to tell at a glance whether their log entries will be AI-formatted or saved as raw text.
 
-### Design
+### Pill Design
 
 A static pill placed immediately after the `CapLog` logo in the header, always visible.
 
 **States:**
 
 | State | Condition | Appearance |
-|---|---|---|
+| --- | --- | --- |
 | Active | `this.adapter !== null` | Green dot + "AI Active" — dark green background (`#0d2e1a`), green text/border (`#4ade80`) |
 | Inactive | `this.adapter === null` | ⚠ icon + "No AI" — dark amber background (`#2a1f00`), yellow text/border (`#fbbf24`) |
 
 The pill is static — not clickable.
 
-### Implementation
+### Pill Implementation
 
 #### `index.html`
 
