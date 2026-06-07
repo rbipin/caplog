@@ -1,4 +1,4 @@
-# AI Text as Canonical Log Entry
+# AI Text as Canonical Log Entry + AI Status Pill
 
 **Date:** 2026-06-07
 
@@ -53,4 +53,50 @@ When loading entries from DB into ChatArea, `rawInput` is currently set to `e.ra
 
 - Existing unit tests mock `formatLogEntry` and assert on stored values — no changes needed.
 - Sidebar and ArchiveModal component tests that assert on preview/search text content may need fixture data updated to use `formatted_text` values.
-- No new tests required; the change is a read-path swap with no new logic.
+- No new tests required for the canonical text change; it is a read-path swap with no new logic.
+
+---
+
+## Feature 2: AI Status Pill
+
+### Problem
+
+There is no visual indicator of whether AI summarization is configured. Users have no way to tell at a glance whether their log entries will be AI-formatted or saved as raw text.
+
+### Design
+
+A static pill placed immediately after the `CapLog` logo in the header, always visible.
+
+**States:**
+
+| State | Condition | Appearance |
+|---|---|---|
+| Active | `this.adapter !== null` | Green dot + "AI Active" — dark green background (`#0d2e1a`), green text/border (`#4ade80`) |
+| Inactive | `this.adapter === null` | ⚠ icon + "No AI" — dark amber background (`#2a1f00`), yellow text/border (`#fbbf24`) |
+
+The pill is static — not clickable.
+
+### Implementation
+
+#### `index.html`
+
+Add `<span id="aiStatusPill" class="pill"></span>` between `.header-logo` and `.header-date`.
+
+#### `src/styles.css`
+
+Add pill styles:
+
+```css
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 20px; font-size: 11px;
+  font-family: var(--font-mono); letter-spacing: 0.04em;
+}
+.pill-green { background: #0d2e1a; border: 1px solid #1a5c32; color: #4ade80; }
+.pill-yellow { background: #2a1f00; border: 1px solid #5c4200; color: #fbbf24; }
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 4px #4ade80; }
+```
+
+#### `src/app.ts`
+
+Add `updateAiPill()` private method that reads `this.adapter` and sets the pill element's class and innerHTML. Call it after `this.adapter` is set — at init (after `getAdapter()`) and after each settings save (inside the `setOnSave` callback, after `refreshAdapter()` resolves).
