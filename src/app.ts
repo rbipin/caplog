@@ -119,7 +119,7 @@ class App {
           this.chatArea.append({
             time, type: 'log', typeLabel: 'Log entry',
             content: e.formatted_text,
-            rawInput: e.raw_text !== e.formatted_text ? e.raw_text : undefined,
+            rawInput: e.raw_text !== e.formatted_text ? stripHtml(e.formatted_text) : undefined,
             entryId: e.id,
           }, false);
         } else {
