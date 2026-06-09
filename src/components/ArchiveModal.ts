@@ -159,7 +159,7 @@ export class ArchiveModal {
   private renderDayTile(day: DayData): HTMLElement {
     const d = parseLocalDate(day.date);
     const dow = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()];
-    const isEmpty = day.entryCount === 0;
+    const isEmpty = day.entryCount === 0 && day.doneCount === 0;
     const isToday = day.date === this.today;
 
     const tile = document.createElement('div');
@@ -171,7 +171,7 @@ export class ArchiveModal {
     tile.innerHTML = `
       <div class="archive-day-dow">${dow}</div>
       <div class="archive-day-num">${d.getDate()}</div>
-      <div class="archive-day-count">${isEmpty ? '—' : `${day.entryCount} entries`}</div>
+      <div class="archive-day-count">${isEmpty ? '—' : day.entryCount > 0 ? `${day.entryCount} entries` : `${day.doneCount} done`}</div>
       ${!isEmpty ? `<button class="archive-clean-btn" title="Delete ${day.date}">🗑</button>` : ''}
     `;
 

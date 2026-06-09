@@ -292,6 +292,25 @@ describe('ArchiveModal', () => {
     );
   });
 
+  it('renders a non-empty tile for a day with only completed todos', async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      // No log entries
+      if (sql.includes('log_entries') && sql.includes('COUNT')) return [];
+      // One day with completed todos
+      if (sql.includes('DATE(completed_at)') && sql.includes('GROUP BY')) {
+        return [{ date: '2026-06-04', done_count: 2 }];
+      }
+      return [];
+    });
+    document.getElementById('archiveBtn')!.click();
+    await new Promise(r => setTimeout(r, 60));
+
+    const tile = document.querySelector<HTMLElement>('.archive-day-tile[data-date="2026-06-04"]');
+    expect(tile).not.toBeNull();
+    expect(tile!.classList.contains('empty')).toBe(false);
+    expect(tile!.textContent).toContain('2 done');
+  });
+
   it('month divider shows a clean button', async () => {
     queryMock.mockImplementation(async (sql: string) => {
       if (sql.includes('GROUP BY date')) return [{ date: '2026-06-03', entry_count: 2 }];
