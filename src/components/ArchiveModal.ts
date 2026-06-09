@@ -78,7 +78,9 @@ export class ArchiveModal {
     for (const r of entryRows) entryCounts[r.date] = r.entry_count;
 
     const doneCounts: Record<string, number> = {};
-    for (const r of doneRows) doneCounts[r.date] = r.done_count;
+    for (const r of doneRows) {
+      if (r.date) doneCounts[r.date] = r.done_count;
+    }
 
     const weeks = buildWeeks(entryCounts, doneCounts, this.currentYear);
     this.renderWeeks(weeks);
