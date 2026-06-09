@@ -79,4 +79,22 @@ describe('Sidebar', () => {
     expect(preview!.textContent).toBe('Meeting notes');
     expect(preview!.textContent).not.toContain('<');
   });
+
+  it('renders a day entry for a day that has only completed todos and no log entries', async () => {
+    queryMock.mockResolvedValue([{
+      date: '2026-06-04',
+      log_count: 0,
+      todo_done_count: 2,
+      preview: 'Fix the login bug',
+    }]);
+    const sidebar = new Sidebar(vi.fn());
+    await sidebar.refresh(3);
+
+    const entries = document.querySelectorAll('.day-entry');
+    expect(entries.length).toBe(1);
+    const preview = entries[0].querySelector('.day-entry-preview');
+    expect(preview!.textContent).toBe('Fix the login bug');
+    const doneTags = entries[0].querySelectorAll('.tag-todo');
+    expect(doneTags.length).toBe(1);
+  });
 });

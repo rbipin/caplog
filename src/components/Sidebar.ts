@@ -21,14 +21,28 @@ export class Sidebar {
 
   private async load(): Promise<void> {
     const stats = await query<DayStats>(`
-      SELECT
-        l.date,
-        COUNT(l.id) AS log_count,
-        (SELECT COUNT(*) FROM todos t WHERE t.completed_at LIKE l.date || '%') AS todo_done_count,
-        (SELECT formatted_text FROM log_entries WHERE date = l.date ORDER BY created_at ASC LIMIT 1) AS preview
-      FROM log_entries l
-      GROUP BY l.date
-      ORDER BY l.date DESC
+      SELECT date, log_count, todo_done_count, preview FROM (
+        SELECT
+          l.date,
+          COUNT(l.id) AS log_count,
+          (SELECT COUNT(*) FROM todos t WHERE t.completed_at LIKE l.date || '%') AS todo_done_count,
+          (SELECT formatted_text FROM log_entries WHERE date = l.date ORDER BY created_at ASC LIMIT 1) AS preview
+        FROM log_entries l
+        GROUP BY l.date
+
+        UNION
+
+        SELECT
+          DATE(t.completed_at) AS date,
+          0 AS log_count,
+          COUNT(*) AS todo_done_count,
+          (SELECT text FROM todos WHERE DATE(completed_at) = DATE(t.completed_at) ORDER BY completed_at ASC LIMIT 1) AS preview
+        FROM todos t
+        WHERE t.completed_at IS NOT NULL
+          AND DATE(t.completed_at) NOT IN (SELECT date FROM log_entries)
+        GROUP BY DATE(t.completed_at)
+      )
+      ORDER BY date DESC
       LIMIT ?
     `, [this.days]);
 
