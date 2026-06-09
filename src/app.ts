@@ -101,7 +101,7 @@ class App {
       `SELECT date FROM log_entries WHERE date >= ?
    UNION
    SELECT DATE(completed_at) AS date FROM todos
-   WHERE completed_at >= ? AND completed_at IS NOT NULL
+   WHERE completed_at >= ?
    ORDER BY date DESC`,
       [cutoffDate, cutoffDate]
     );
@@ -159,7 +159,7 @@ class App {
             const typeLabel = t.deadline ? `Todo created — due ${t.deadline}` : 'Todo created';
             this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text) }, false);
           }
-        } else {
+        } else if (item.kind === 'todo-completed') {
           const t = item.todo;
           const time = formatTime(t.completed_at!);
           this.chatArea.append({

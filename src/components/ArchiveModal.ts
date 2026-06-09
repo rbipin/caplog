@@ -170,10 +170,11 @@ export class ArchiveModal {
     if (isEmpty) tile.classList.add('empty');
     if (isToday) tile.classList.add('today');
 
+    const countLabel = isEmpty ? '—' : day.entryCount > 0 ? `${day.entryCount} entries` : `${day.doneCount} done`;
     tile.innerHTML = `
       <div class="archive-day-dow">${dow}</div>
       <div class="archive-day-num">${d.getDate()}</div>
-      <div class="archive-day-count">${isEmpty ? '—' : day.entryCount > 0 ? `${day.entryCount} entries` : `${day.doneCount} done`}</div>
+      <div class="archive-day-count">${countLabel}</div>
       ${!isEmpty ? `<button class="archive-clean-btn" title="Delete ${day.date}">🗑</button>` : ''}
     `;
 
