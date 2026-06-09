@@ -28,15 +28,18 @@ export function buildWeeks(
 ): Map<string, WeekData> {
   const weeks = new Map<string, WeekData>();
 
-  for (const [date, entryCount] of Object.entries(entryCounts)) {
+  const allDates = new Set([...Object.keys(entryCounts), ...Object.keys(doneCounts)]);
+  for (const date of allDates) {
     const weekStart = getWeekStart(date);
     if (!weeks.has(weekStart)) {
       weeks.set(weekStart, { weekStart, days: [], totalEntries: 0, totalDone: 0 });
     }
     const week = weeks.get(weekStart)!;
+    const entryCount = entryCounts[date] ?? 0;
+    const doneCount = doneCounts[date] ?? 0;
+    week.days.push({ date, entryCount, doneCount });
     week.totalEntries += entryCount;
-    week.totalDone += doneCounts[date] ?? 0;
-    week.days.push({ date, entryCount, doneCount: doneCounts[date] ?? 0 });
+    week.totalDone += doneCount;
   }
 
   for (const week of weeks.values()) {

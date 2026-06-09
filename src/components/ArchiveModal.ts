@@ -78,7 +78,9 @@ export class ArchiveModal {
     for (const r of entryRows) entryCounts[r.date] = r.entry_count;
 
     const doneCounts: Record<string, number> = {};
-    for (const r of doneRows) doneCounts[r.date] = r.done_count;
+    for (const r of doneRows) {
+      if (r.date) doneCounts[r.date] = r.done_count;
+    }
 
     const weeks = buildWeeks(entryCounts, doneCounts, this.currentYear);
     this.renderWeeks(weeks);
@@ -159,7 +161,7 @@ export class ArchiveModal {
   private renderDayTile(day: DayData): HTMLElement {
     const d = parseLocalDate(day.date);
     const dow = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()];
-    const isEmpty = day.entryCount === 0;
+    const isEmpty = day.entryCount === 0 && day.doneCount === 0;
     const isToday = day.date === this.today;
 
     const tile = document.createElement('div');
@@ -168,10 +170,11 @@ export class ArchiveModal {
     if (isEmpty) tile.classList.add('empty');
     if (isToday) tile.classList.add('today');
 
+    const countLabel = isEmpty ? '—' : day.entryCount > 0 ? `${day.entryCount} entries` : `${day.doneCount} done`;
     tile.innerHTML = `
       <div class="archive-day-dow">${dow}</div>
       <div class="archive-day-num">${d.getDate()}</div>
-      <div class="archive-day-count">${isEmpty ? '—' : `${day.entryCount} entries`}</div>
+      <div class="archive-day-count">${countLabel}</div>
       ${!isEmpty ? `<button class="archive-clean-btn" title="Delete ${day.date}">🗑</button>` : ''}
     `;
 

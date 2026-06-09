@@ -72,13 +72,15 @@ async function submitLog(value: string) {
   await new Promise(r => setTimeout(r, 60));
 }
 
+let startupQueryCalls: [string, ...unknown[]][] = [];
+
 describe('ChatArea', () => {
   beforeAll(async () => {
     document.body.innerHTML = FULL_DOM;
 
     // Return two log entries during startup loadRecentEntries()
     queryMock.mockImplementation(async (sql: string) => {
-      if (sql.includes('DISTINCT date')) {
+      if (sql.includes('UNION') && sql.includes('completed_at')) {
         return [{ date: '2026-06-01' }];
       }
       if (sql.includes('log_entries') && sql.includes('WHERE date = ?')) {
@@ -93,6 +95,9 @@ describe('ChatArea', () => {
     await import('../../app.js');
     window.dispatchEvent(new Event('DOMContentLoaded'));
     await new Promise(r => setTimeout(r, 100));
+
+    // Capture startup calls before beforeEach clears them
+    startupQueryCalls = queryMock.mock.calls.map(([sql, ...rest]) => [String(sql), ...rest]) as [string, ...unknown[]][];
   });
 
   beforeEach(() => {
@@ -162,6 +167,55 @@ describe('ChatArea', () => {
     cancelBtn.click();
 
     expect(content.innerHTML).toBe(originalHtml);
+  });
+
+  it('issues a UNION date query that includes completed_at when loading entries', async () => {
+    // The startup loadRecentEntries already ran in beforeAll.
+    // Check that at least one call to queryMock contained the UNION pattern.
+    const unionCall = startupQueryCalls.find(
+      (args) => args[0].includes('UNION') && args[0].includes('completed_at')
+    );
+    expect(unionCall).toBeDefined();
+  });
+
+  it('renders a todo-completed message with strikethrough content and correct type label', async () => {
+    const { ChatArea } = await import('../../components/ChatArea.js');
+    const area = document.getElementById('chatArea')!;
+    const ca = new ChatArea();
+    ca.append({
+      time: '10:00',
+      type: 'todo-completed',
+      typeLabel: 'Todo completed',
+      content: '<s>Deploy hotfix</s>',
+    });
+    const newMsg = area.lastElementChild as HTMLElement | null;
+    expect(newMsg).not.toBeNull();
+    const msgType = newMsg!.querySelector('.msg-type.todo-completed');
+    expect(msgType).not.toBeNull();
+    expect(msgType!.textContent).toBe('Todo completed');
+    const msgContent = newMsg!.querySelector('.msg-content');
+    expect(msgContent!.innerHTML).toBe('<s>Deploy hotfix</s>');
+    newMsg!.remove(); // remove the appended message without breaking existing DOM/event state
+  });
+
+  it('renders a same-day completed todo with deadline in the type label', async () => {
+    const { ChatArea } = await import('../../components/ChatArea.js');
+    const area = document.getElementById('chatArea')!;
+    const ca = new ChatArea();
+    ca.append({
+      time: '11:00',
+      type: 'todo-completed',
+      typeLabel: 'Todo completed — was due 2026-06-15',
+      content: '<s>Fix the login bug</s>',
+    });
+    const newMsg = area.lastElementChild as HTMLElement;
+    expect(newMsg).not.toBeNull();
+    const msgType = newMsg.querySelector('.msg-type.todo-completed');
+    expect(msgType).not.toBeNull();
+    expect(msgType!.textContent).toBe('Todo completed — was due 2026-06-15');
+    const msgContent = newMsg.querySelector('.msg-content');
+    expect(msgContent!.innerHTML).toBe('<s>Fix the login bug</s>');
+    newMsg.remove();
   });
 
   it('delete button: clicking ✕ calls DELETE FROM log_entries and removes the message', async () => {
