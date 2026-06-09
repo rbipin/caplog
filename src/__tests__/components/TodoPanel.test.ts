@@ -335,7 +335,7 @@ describe('TodoPanel', () => {
     const editRow = document.querySelector('.todo-meta-edit');
     expect(editRow).not.toBeNull();
     expect(editRow!.querySelector('input')).not.toBeNull();
-    expect(editRow!.querySelector('.todo-meta-importance-btn')).not.toBeNull();
+    expect(editRow!.querySelector('.todo-meta-importance-btn')).toBeNull();
   });
 
   it('edit row pre-fills existing deadline in the input', async () => {
@@ -350,7 +350,7 @@ describe('TodoPanel', () => {
     expect(input.value).toBe('2026-08-15');
   });
 
-  it('Save calls UPDATE todos SET deadline and is_important with correct values', async () => {
+  it('Save updates deadline via UPDATE todos SET deadline', async () => {
     const todo = makeTodo({ id: 25, text: 'To update', deadline: null, is_important: 0 });
     await triggerReload([todo]);
 
@@ -368,8 +368,8 @@ describe('TodoPanel', () => {
     await new Promise(r => setTimeout(r, 30));
 
     expect(executeMock).toHaveBeenCalledWith(
-      'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
-      ['2026-09-01', 0, 25]
+      'UPDATE todos SET deadline = ? WHERE id = ?',
+      ['2026-09-01', 25]
     );
   });
 
@@ -391,52 +391,9 @@ describe('TodoPanel', () => {
     await new Promise(r => setTimeout(r, 30));
 
     expect(executeMock).toHaveBeenCalledWith(
-      'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
-      [null, 0, 26]
+      'UPDATE todos SET deadline = ? WHERE id = ?',
+      [null, 26]
     );
-  });
-
-  it('Save with importance toggled ON passes is_important=1 to execute', async () => {
-    const todo = makeTodo({ id: 33, text: 'Toggle then save', is_important: 0 });
-    await triggerReload([todo]);
-
-    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
-    chip.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    const toggleBtn = document.querySelector('.todo-meta-importance-btn') as HTMLButtonElement;
-    toggleBtn.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    vi.clearAllMocks();
-    setTodosQuery([]);
-    const saveBtn = document.querySelector('.todo-meta-save') as HTMLButtonElement;
-    saveBtn.click();
-    await new Promise(r => setTimeout(r, 30));
-
-    expect(executeMock).toHaveBeenCalledWith(
-      'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
-      [null, 1, 33]
-    );
-  });
-
-  it('importance toggle flips displayed state (☆ ↔ ★) without writing to DB', async () => {
-    const todo = makeTodo({ id: 27, text: 'Toggle important', is_important: 0 });
-    await triggerReload([todo]);
-
-    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
-    chip.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    const toggleBtn = document.querySelector('.todo-meta-importance-btn') as HTMLButtonElement;
-    expect(toggleBtn.textContent?.trim()).toContain('☆');
-
-    vi.clearAllMocks();
-    toggleBtn.click();
-    await new Promise(r => setTimeout(r, 10));
-
-    expect(toggleBtn.textContent?.trim()).toContain('★');
-    expect(executeMock).not.toHaveBeenCalled();
   });
 
   it('importance chip directly toggles is_important without opening meta-edit', async () => {

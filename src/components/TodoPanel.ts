@@ -127,8 +127,6 @@ export class TodoPanel {
       textEl.innerHTML = escapeHtml(todo.text);
     }
 
-    let importantState = todo.is_important === 1;
-
     const editRow = document.createElement('div');
     editRow.className = 'todo-meta-edit';
 
@@ -136,10 +134,6 @@ export class TodoPanel {
     deadlineInput.type = 'text';
     deadlineInput.placeholder = 'due date (e.g. Jun 15)';
     deadlineInput.value = todo.deadline ?? '';
-
-    const importanceBtn = document.createElement('button');
-    importanceBtn.className = `todo-meta-importance-btn${importantState ? ' active' : ''}`;
-    importanceBtn.textContent = importantState ? '★ Important' : '☆ Important';
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'todo-meta-save';
@@ -150,7 +144,6 @@ export class TodoPanel {
     cancelBtn.textContent = 'Cancel';
 
     editRow.appendChild(deadlineInput);
-    editRow.appendChild(importanceBtn);
     editRow.appendChild(saveBtn);
     editRow.appendChild(cancelBtn);
     const contentEl = el.querySelector<HTMLElement>('.todo-content') ?? el;
@@ -160,13 +153,6 @@ export class TodoPanel {
     deadlineInput.focus();
 
     const close = () => { editRow.remove(); };
-
-    importanceBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      importantState = !importantState;
-      importanceBtn.textContent = importantState ? '★ Important' : '☆ Important';
-      importanceBtn.classList.toggle('active', importantState);
-    });
 
     cancelBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -178,10 +164,7 @@ export class TodoPanel {
       saveBtn.disabled = true;
       saveBtn.textContent = '...';
       const deadline = deadlineInput.value.trim() || null;
-      await execute(
-        'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
-        [deadline, importantState ? 1 : 0, todo.id]
-      );
+      await execute('UPDATE todos SET deadline = ? WHERE id = ?', [deadline, todo.id]);
       await this.load();
     });
 
