@@ -723,7 +723,7 @@ html, body {
   cursor: pointer;
   letter-spacing: 0.03em;
   user-select: none;
-  transition: opacity 0.1s;
+  transition: color 0.1s, border-color 0.1s;
 }
 
 .todo-chip.ghost {
@@ -773,6 +773,10 @@ html, body {
 .todo-meta-edit input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.todo-meta-edit input::placeholder {
+  color: var(--text-dim);
 }
 
 .todo-meta-importance-btn,
