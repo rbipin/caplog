@@ -8,7 +8,7 @@ export interface TodoItem {
   completed_at: string | null;
 }
 
-export type MessageType = 'log' | 'todo-created' | 'system';
+export type MessageType = 'log' | 'todo-created' | 'todo-completed' | 'system';
 
 export interface Message {
   time: string;
@@ -36,4 +36,5 @@ export interface DayStats {
 
 export type FeedItem =
   | { created_at: string; kind: 'log'; entry: LogEntry }
-  | { created_at: string; kind: 'todo'; todo: TodoItem };
+  | { created_at: string; kind: 'todo'; todo: TodoItem }
+  | { created_at: string; kind: 'todo-completed'; todo: TodoItem };

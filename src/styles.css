@@ -455,6 +455,7 @@ html, body {
 
 .msg-type.log { color: var(--accent); }
 .msg-type.todo-created { color: var(--green); }
+.msg-type.todo-completed { color: var(--green); }
 .msg-type.system { color: var(--text-dim); }
 
 .msg-content {
