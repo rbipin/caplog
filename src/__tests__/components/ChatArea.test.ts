@@ -198,6 +198,26 @@ describe('ChatArea', () => {
     newMsg!.remove(); // remove the appended message without breaking existing DOM/event state
   });
 
+  it('renders a same-day completed todo with deadline in the type label', async () => {
+    const { ChatArea } = await import('../../components/ChatArea.js');
+    const area = document.getElementById('chatArea')!;
+    const ca = new ChatArea();
+    ca.append({
+      time: '11:00',
+      type: 'todo-completed',
+      typeLabel: 'Todo completed — was due 2026-06-15',
+      content: '<s>Fix the login bug</s>',
+    });
+    const newMsg = area.lastElementChild as HTMLElement;
+    expect(newMsg).not.toBeNull();
+    const msgType = newMsg.querySelector('.msg-type.todo-completed');
+    expect(msgType).not.toBeNull();
+    expect(msgType!.textContent).toBe('Todo completed — was due 2026-06-15');
+    const msgContent = newMsg.querySelector('.msg-content');
+    expect(msgContent!.innerHTML).toBe('<s>Fix the login bug</s>');
+    newMsg.remove();
+  });
+
   it('delete button: clicking ✕ calls DELETE FROM log_entries and removes the message', async () => {
     queryMock.mockResolvedValueOnce([{ id: 77 }]); // SELECT id after insert
     await submitLog('Entry to delete');

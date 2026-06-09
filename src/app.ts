@@ -126,7 +126,7 @@ class App {
         query<TodoItem>('SELECT * FROM todos WHERE DATE(completed_at) = ? ORDER BY completed_at ASC', [date]),
       ]);
 
-      const completedTodayIds = new Set(completedTodos.map((t) => t.id));
+      const completedOnDateIds = new Set(completedTodos.map((t) => t.id));
 
       const items: FeedItem[] = [
         ...entries.map((e) => ({ created_at: e.created_at, kind: 'log' as const, entry: e })),
@@ -149,9 +149,10 @@ class App {
         } else if (item.kind === 'todo') {
           const t = item.todo;
           const time = formatTime(t.created_at);
-          if (completedTodayIds.has(t.id)) {
+          if (completedOnDateIds.has(t.id)) {
+            const typeLabel = t.deadline ? `Todo completed — was due ${t.deadline}` : 'Todo completed';
             this.chatArea.append({
-              time, type: 'todo-completed', typeLabel: 'Todo completed',
+              time, type: 'todo-completed', typeLabel,
               content: `<s>${escapeHtml(t.text)}</s>`,
             }, false);
           } else {
