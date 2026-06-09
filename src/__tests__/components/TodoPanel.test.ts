@@ -439,6 +439,25 @@ describe('TodoPanel', () => {
     expect(executeMock).not.toHaveBeenCalled();
   });
 
+  it('importance chip directly toggles is_important without opening meta-edit', async () => {
+    const todo = makeTodo({ id: 34, text: 'Direct toggle', is_important: 0 });
+    await triggerReload([todo]);
+
+    const importanceChip = document.querySelector<HTMLElement>('[data-chip="importance"]');
+    expect(importanceChip).not.toBeNull();
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+    importanceChip!.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET is_important = ? WHERE id = ?',
+      [1, 34]
+    );
+    expect(document.querySelector('.todo-meta-edit')).toBeNull();
+  });
+
   it('mutual exclusion: opening text edit then clicking chip closes text edit and opens meta edit', async () => {
     const todo = makeTodo({ id: 28, text: 'Mutual exclusion' });
     await triggerReload([todo]);

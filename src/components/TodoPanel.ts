@@ -219,11 +219,11 @@ export class TodoPanel {
 
     const chipsHtml = status !== 'completed' ? (() => {
       const deadlineChip = todo.deadline
-        ? `<span class="todo-chip filled">due ${escapeHtml(todo.deadline)}</span>`
-        : `<span class="todo-chip ghost">+ due date</span>`;
+        ? `<span class="todo-chip filled" data-chip="deadline">due ${escapeHtml(todo.deadline)}</span>`
+        : `<span class="todo-chip ghost" data-chip="deadline">+ due date</span>`;
       const importanceChip = todo.is_important
-        ? `<span class="todo-chip filled important">★ important</span>`
-        : `<span class="todo-chip ghost">☆ important</span>`;
+        ? `<span class="todo-chip filled important" data-chip="importance">★ important</span>`
+        : `<span class="todo-chip ghost" data-chip="importance">☆ important</span>`;
       return `<div class="todo-chips">${deadlineChip}${importanceChip}</div>`;
     })() : '';
 
@@ -252,11 +252,18 @@ export class TodoPanel {
         this.startTodoEdit(el, textEl, todo);
       });
 
-      el.querySelectorAll<HTMLElement>('.todo-chip').forEach((chip) => {
-        chip.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.startMetaEdit(el, textEl, todo);
-        });
+      el.querySelector<HTMLElement>('[data-chip="deadline"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.startMetaEdit(el, textEl, todo);
+      });
+
+      el.querySelector<HTMLElement>('[data-chip="importance"]')?.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await execute(
+          'UPDATE todos SET is_important = ? WHERE id = ?',
+          [todo.is_important ? 0 : 1, todo.id]
+        );
+        await this.load();
       });
     } else {
       const checkEl = el.querySelector<HTMLElement>('.todo-check');
