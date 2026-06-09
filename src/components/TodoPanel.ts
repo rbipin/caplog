@@ -174,6 +174,8 @@ export class TodoPanel {
 
     saveBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      saveBtn.disabled = true;
+      saveBtn.textContent = '...';
       const deadline = deadlineInput.value.trim() || null;
       await execute(
         'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
@@ -219,7 +221,7 @@ export class TodoPanel {
         ? `<span class="todo-chip filled">due ${escapeHtml(todo.deadline)}</span>`
         : `<span class="todo-chip ghost">+ due date</span>`;
       const importanceChip = todo.is_important
-        ? `<span class="todo-chip filled">★ important</span>`
+        ? `<span class="todo-chip filled important">★ important</span>`
         : `<span class="todo-chip ghost">☆ important</span>`;
       return `<div class="todo-chips">${deadlineChip}${importanceChip}</div>`;
     })() : '';

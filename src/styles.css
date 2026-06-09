@@ -802,6 +802,12 @@ html, body {
   background: var(--accent-dim);
 }
 
+.todo-chip.important {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .completed-check {
   color: var(--green);
   font-size: 11px;

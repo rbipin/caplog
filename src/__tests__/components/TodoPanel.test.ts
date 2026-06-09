@@ -309,7 +309,18 @@ describe('TodoPanel', () => {
     const deadlineChip = chips.find(c => c.textContent?.includes('due'));
     expect(deadlineChip).not.toBeNull();
     expect(deadlineChip!.textContent?.trim()).toBe('due 2026-07-01');
-    expect(deadlineChip!.classList.contains('ghost')).toBe(false);
+    expect(deadlineChip!.classList.contains('filled')).toBe(true);
+  });
+
+  it('filled importance chip renders "★ important" with filled class when is_important=1', async () => {
+    const todo = makeTodo({ id: 32, text: 'Is important', is_important: 1 });
+    await triggerReload([todo]);
+
+    const chips = Array.from(document.querySelectorAll('.todo-item:not(.completed) .todo-chip'));
+    const importanceChip = chips.find(c => c.textContent?.includes('important'));
+    expect(importanceChip).not.toBeNull();
+    expect(importanceChip!.textContent?.trim()).toBe('★ important');
+    expect(importanceChip!.classList.contains('filled')).toBe(true);
   });
 
   it('startMetaEdit: clicking a chip opens div.todo-meta-edit with input and toggle', async () => {
@@ -382,6 +393,30 @@ describe('TodoPanel', () => {
     expect(executeMock).toHaveBeenCalledWith(
       'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
       [null, 0, 26]
+    );
+  });
+
+  it('Save with importance toggled ON passes is_important=1 to execute', async () => {
+    const todo = makeTodo({ id: 33, text: 'Toggle then save', is_important: 0 });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const toggleBtn = document.querySelector('.todo-meta-importance-btn') as HTMLButtonElement;
+    toggleBtn.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+    const saveBtn = document.querySelector('.todo-meta-save') as HTMLButtonElement;
+    saveBtn.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
+      [null, 1, 33]
     );
   });
 
