@@ -34,7 +34,7 @@ html, body {
 /* Layout */
 .app {
   display: grid;
-  grid-template-columns: 260px 1fr 300px;
+  grid-template-columns: 260px 1fr 360px;
   grid-template-rows: 48px 1fr;
   height: 100vh;
   gap: 0;
@@ -646,6 +646,11 @@ html, body {
   border-left-color: var(--red);
 }
 
+.todo-content {
+  flex: 1;
+  min-width: 0;
+}
+
 .todo-check {
   width: 14px;
   height: 14px;
@@ -708,6 +713,105 @@ html, body {
 
 .todo-badge.important { background: var(--accent-dim); color: var(--accent); }
 .todo-badge.overdue { background: var(--red-dim); color: var(--red); }
+
+.todo-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.todo-chip {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  user-select: none;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.todo-chip.ghost {
+  border: 1px dashed var(--border-hover);
+  color: var(--text-dim);
+  background: transparent;
+}
+
+.todo-chip.ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.todo-chip.filled {
+  border: 1px solid var(--border-hover);
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.todo-chip.filled:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.todo-meta-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.todo-meta-edit input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 13px;
+  width: 140px;
+}
+
+.todo-meta-edit input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.todo-meta-edit input::placeholder {
+  color: var(--text-dim);
+}
+
+.todo-meta-importance-btn,
+.todo-meta-save,
+.todo-meta-cancel {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.todo-meta-importance-btn:hover,
+.todo-meta-save:hover { color: var(--accent); border-color: var(--accent); }
+.todo-meta-cancel:hover { color: var(--text); border-color: var(--border-hover); }
+
+.todo-meta-importance-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.todo-chip.important {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
 
 .completed-check {
   color: var(--green);

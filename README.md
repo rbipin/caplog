@@ -13,7 +13,7 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 ## Features
 
 - **Log entries** — type anything and it's formatted by AI into a clean structured entry
-- **Todo management** — create, prioritize, and complete tasks with deadline support
+- **Todo management** — create, prioritize, and complete tasks with deadline support; click the importance chip to instantly toggle priority, click the deadline chip to set or clear a due date inline
 - **Sidebar history** — browse past days with entry previews and per-day completed todo counts
 - **Chat feed** — today's entries at the top; past days shown below as collapsible sections
 - **Log modal** — view all entries for the month in one overlay, with export

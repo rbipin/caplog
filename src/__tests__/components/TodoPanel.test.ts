@@ -279,4 +279,210 @@ describe('TodoPanel', () => {
     const expectedStr = expected.toISOString().split('T')[0];
     expect(cutoffDate).toBe(expectedStr);
   });
+
+  // --- Meta edit (chips) tests ---
+
+  it('ghost chips render on open todo with no deadline and is_important=0', async () => {
+    const todo = makeTodo({ id: 20, text: 'Chip test', deadline: null, is_important: 0 });
+    await triggerReload([todo]);
+
+    const chips = document.querySelectorAll('.todo-item:not(.completed) .todo-chip');
+    const texts = Array.from(chips).map(c => c.textContent?.trim());
+    expect(texts).toContain('+ due date');
+    expect(texts).toContain('☆ important');
+  });
+
+  it('ghost chips are absent on completed todos', async () => {
+    const todo = makeTodo({ id: 21, text: 'Done', is_completed: 1,
+                            completed_at: new Date().toISOString() });
+    await triggerReload([todo]);
+
+    const chips = document.querySelectorAll('.todo-item.completed .todo-chip');
+    expect(chips.length).toBe(0);
+  });
+
+  it('filled deadline chip shows "due <value>" when todo has a deadline', async () => {
+    const todo = makeTodo({ id: 22, text: 'Has deadline', deadline: '2026-07-01' });
+    await triggerReload([todo]);
+
+    const chips = Array.from(document.querySelectorAll('.todo-item:not(.completed) .todo-chip'));
+    const deadlineChip = chips.find(c => c.textContent?.includes('due'));
+    expect(deadlineChip).not.toBeNull();
+    expect(deadlineChip!.textContent?.trim()).toBe('due 2026-07-01');
+    expect(deadlineChip!.classList.contains('filled')).toBe(true);
+  });
+
+  it('filled importance chip renders "★ important" with filled class when is_important=1', async () => {
+    const todo = makeTodo({ id: 32, text: 'Is important', is_important: 1 });
+    await triggerReload([todo]);
+
+    const chips = Array.from(document.querySelectorAll('.todo-item:not(.completed) .todo-chip'));
+    const importanceChip = chips.find(c => c.textContent?.includes('important'));
+    expect(importanceChip).not.toBeNull();
+    expect(importanceChip!.textContent?.trim()).toBe('★ important');
+    expect(importanceChip!.classList.contains('filled')).toBe(true);
+  });
+
+  it('startMetaEdit: clicking a chip opens div.todo-meta-edit with input and toggle', async () => {
+    const todo = makeTodo({ id: 23, text: 'Open meta edit' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    expect(chip).not.toBeNull();
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const editRow = document.querySelector('.todo-meta-edit');
+    expect(editRow).not.toBeNull();
+    expect(editRow!.querySelector('input')).not.toBeNull();
+    expect(editRow!.querySelector('.todo-meta-importance-btn')).toBeNull();
+  });
+
+  it('edit row pre-fills existing deadline in the input', async () => {
+    const todo = makeTodo({ id: 24, text: 'Prefilled', deadline: '2026-08-15' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const input = document.querySelector('.todo-meta-edit input') as HTMLInputElement;
+    expect(input.value).toBe('2026-08-15');
+  });
+
+  it('Save updates deadline via UPDATE todos SET deadline', async () => {
+    const todo = makeTodo({ id: 25, text: 'To update', deadline: null, is_important: 0 });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const input = document.querySelector('.todo-meta-edit input') as HTMLInputElement;
+    input.value = '2026-09-01';
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+    const saveBtn = document.querySelector('.todo-meta-save') as HTMLButtonElement;
+    saveBtn.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET deadline = ? WHERE id = ?',
+      ['2026-09-01', 25]
+    );
+  });
+
+  it('Save with empty deadline input passes null to execute', async () => {
+    const todo = makeTodo({ id: 26, text: 'Clear deadline', deadline: '2026-07-01' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    const input = document.querySelector('.todo-meta-edit input') as HTMLInputElement;
+    input.value = '';
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+    const saveBtn = document.querySelector('.todo-meta-save') as HTMLButtonElement;
+    saveBtn.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET deadline = ? WHERE id = ?',
+      [null, 26]
+    );
+  });
+
+  it('importance chip directly toggles is_important without opening meta-edit', async () => {
+    const todo = makeTodo({ id: 34, text: 'Direct toggle', is_important: 0 });
+    await triggerReload([todo]);
+
+    const importanceChip = document.querySelector<HTMLElement>('[data-chip="importance"]');
+    expect(importanceChip).not.toBeNull();
+
+    vi.clearAllMocks();
+    setTodosQuery([]);
+    importanceChip!.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(executeMock).toHaveBeenCalledWith(
+      'UPDATE todos SET is_important = ? WHERE id = ?',
+      [1, 34]
+    );
+    expect(document.querySelector('.todo-meta-edit')).toBeNull();
+  });
+
+  it('mutual exclusion: opening text edit then clicking chip closes text edit and opens meta edit', async () => {
+    const todo = makeTodo({ id: 28, text: 'Mutual exclusion' });
+    await triggerReload([todo]);
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+    expect(document.querySelector('.todo-edit-area')).not.toBeNull();
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(document.querySelector('.todo-edit-area')).toBeNull();
+    expect(document.querySelector('.todo-meta-edit')).not.toBeNull();
+  });
+
+  it('Escape key closes meta edit without calling execute', async () => {
+    const todo = makeTodo({ id: 29, text: 'Escape test' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    vi.clearAllMocks();
+    const input = document.querySelector('.todo-meta-edit input') as HTMLInputElement;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(document.querySelector('.todo-meta-edit')).toBeNull();
+    expect(executeMock).not.toHaveBeenCalled();
+  });
+
+  it('clicking deadline input inside open meta-edit does not complete the todo', async () => {
+    const todo = makeTodo({ id: 30, text: 'No accidental complete' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    vi.clearAllMocks();
+    const input = document.querySelector('.todo-meta-edit input') as HTMLInputElement;
+    input.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(executeMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('is_completed = 1'),
+      expect.anything()
+    );
+    expect(document.querySelector('.todo-meta-edit')).not.toBeNull();
+  });
+
+  it('reverse mutual exclusion: meta-edit open then clicking text closes meta-edit and opens text edit', async () => {
+    const todo = makeTodo({ id: 31, text: 'Reverse mutual exclusion' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+    expect(document.querySelector('.todo-meta-edit')).not.toBeNull();
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(document.querySelector('.todo-meta-edit')).toBeNull();
+    expect(document.querySelector('.todo-edit-area')).not.toBeNull();
+  });
 });
