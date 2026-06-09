@@ -39,6 +39,18 @@ export function buildWeeks(
     week.days.push({ date, entryCount, doneCount: doneCounts[date] ?? 0 });
   }
 
+  for (const [date, doneCount] of Object.entries(doneCounts)) {
+    const weekStart = getWeekStart(date);
+    if (!weeks.has(weekStart)) {
+      weeks.set(weekStart, { weekStart, days: [], totalEntries: 0, totalDone: 0 });
+    }
+    const week = weeks.get(weekStart)!;
+    if (!week.days.find(d => d.date === date)) {
+      week.days.push({ date, entryCount: 0, doneCount });
+      week.totalDone += doneCount;
+    }
+  }
+
   for (const week of weeks.values()) {
     const existing = new Set(week.days.map(d => d.date));
     const mon = parseLocalDate(week.weekStart);
