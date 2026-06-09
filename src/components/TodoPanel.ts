@@ -153,7 +153,8 @@ export class TodoPanel {
     editRow.appendChild(importanceBtn);
     editRow.appendChild(saveBtn);
     editRow.appendChild(cancelBtn);
-    el.appendChild(editRow);
+    const contentEl = el.querySelector<HTMLElement>('.todo-content') ?? el;
+    contentEl.appendChild(editRow);
     editRow.addEventListener('click', (e) => e.stopPropagation());
 
     deadlineInput.focus();
@@ -228,7 +229,7 @@ export class TodoPanel {
 
     el.innerHTML = `
       <div class="todo-check">${checkInner}</div>
-      <div style="flex:1">
+      <div class="todo-content">
         <div class="todo-text">${escapeHtml(todo.text)}</div>
         ${metaHtml}
         ${chipsHtml}

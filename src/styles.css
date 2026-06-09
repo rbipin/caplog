@@ -646,6 +646,11 @@ html, body {
   border-left-color: var(--red);
 }
 
+.todo-content {
+  flex: 1;
+  min-width: 0;
+}
+
 .todo-check {
   width: 14px;
   height: 14px;
