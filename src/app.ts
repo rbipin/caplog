@@ -98,8 +98,12 @@ class App {
     cutoff.setDate(cutoff.getDate() - days);
     const cutoffDate = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
     const dateRows = await query<{ date: string }>(
-      'SELECT DISTINCT date FROM log_entries WHERE date >= ? ORDER BY date DESC',
-      [cutoffDate]
+      `SELECT date FROM log_entries WHERE date >= ?
+   UNION
+   SELECT DATE(completed_at) AS date FROM todos
+   WHERE completed_at >= ? AND completed_at IS NOT NULL
+   ORDER BY date DESC`,
+      [cutoffDate, cutoffDate]
     );
 
     const dates = dateRows.map((r) => r.date);
@@ -116,14 +120,20 @@ class App {
 
       this.chatArea.appendDaySection(label, dateSubLabel, isToday);
 
-      const [entries, todos] = await Promise.all([
+      const [entries, createdTodos, completedTodos] = await Promise.all([
         query<LogEntry>('SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC', [date]),
         query<TodoItem>('SELECT * FROM todos WHERE created_at LIKE ? ORDER BY created_at ASC', [date + '%']),
+        query<TodoItem>('SELECT * FROM todos WHERE DATE(completed_at) = ? ORDER BY completed_at ASC', [date]),
       ]);
+
+      const completedTodayIds = new Set(completedTodos.map((t) => t.id));
 
       const items: FeedItem[] = [
         ...entries.map((e) => ({ created_at: e.created_at, kind: 'log' as const, entry: e })),
-        ...todos.map((t) => ({ created_at: t.created_at, kind: 'todo' as const, todo: t })),
+        ...createdTodos.map((t) => ({ created_at: t.created_at, kind: 'todo' as const, todo: t })),
+        ...completedTodos
+          .filter((t) => !t.created_at.startsWith(date))
+          .map((t) => ({ created_at: t.completed_at!, kind: 'todo-completed' as const, todo: t })),
       ].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
       for (const item of items) {
@@ -136,11 +146,25 @@ class App {
             rawInput: e.raw_text !== e.formatted_text ? stripHtml(e.formatted_text) : undefined,
             entryId: e.id,
           }, false);
-        } else {
+        } else if (item.kind === 'todo') {
           const t = item.todo;
           const time = formatTime(t.created_at);
-          const typeLabel = t.deadline ? `Todo created — due ${t.deadline}` : 'Todo created';
-          this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text) }, false);
+          if (completedTodayIds.has(t.id)) {
+            this.chatArea.append({
+              time, type: 'todo-completed', typeLabel: 'Todo completed',
+              content: `<s>${escapeHtml(t.text)}</s>`,
+            }, false);
+          } else {
+            const typeLabel = t.deadline ? `Todo created — due ${t.deadline}` : 'Todo created';
+            this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text) }, false);
+          }
+        } else {
+          const t = item.todo;
+          const time = formatTime(t.completed_at!);
+          this.chatArea.append({
+            time, type: 'todo-completed', typeLabel: 'Todo completed',
+            content: `<s>${escapeHtml(t.text)}</s>`,
+          }, false);
         }
       }
     }
