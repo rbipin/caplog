@@ -74,6 +74,7 @@ export class TodoPanel {
   }
 
   private startTodoEdit(el: HTMLElement, textEl: HTMLElement, todo: TodoItem): void {
+    el.querySelector('div.todo-meta-edit')?.remove();
     if (el.querySelector('textarea.todo-edit-area')) return;
 
     const originalHtml = textEl.innerHTML;
@@ -153,6 +154,7 @@ export class TodoPanel {
     editRow.appendChild(saveBtn);
     editRow.appendChild(cancelBtn);
     el.appendChild(editRow);
+    editRow.addEventListener('click', (e) => e.stopPropagation());
 
     deadlineInput.focus();
 

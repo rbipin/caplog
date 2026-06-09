@@ -437,4 +437,41 @@ describe('TodoPanel', () => {
     expect(document.querySelector('.todo-meta-edit')).toBeNull();
     expect(executeMock).not.toHaveBeenCalled();
   });
+
+  it('clicking deadline input inside open meta-edit does not complete the todo', async () => {
+    const todo = makeTodo({ id: 30, text: 'No accidental complete' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    vi.clearAllMocks();
+    const input = document.querySelector('.todo-meta-edit input') as HTMLInputElement;
+    input.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(executeMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('is_completed = 1'),
+      expect.anything()
+    );
+    expect(document.querySelector('.todo-meta-edit')).not.toBeNull();
+  });
+
+  it('reverse mutual exclusion: meta-edit open then clicking text closes meta-edit and opens text edit', async () => {
+    const todo = makeTodo({ id: 31, text: 'Reverse mutual exclusion' });
+    await triggerReload([todo]);
+
+    const chip = document.querySelector('.todo-item:not(.completed) .todo-chip') as HTMLElement;
+    chip.click();
+    await new Promise(r => setTimeout(r, 10));
+    expect(document.querySelector('.todo-meta-edit')).not.toBeNull();
+
+    const textEl = document.querySelector('.todo-item:not(.completed) .todo-text') as HTMLElement;
+    textEl.click();
+    await new Promise(r => setTimeout(r, 10));
+
+    expect(document.querySelector('.todo-meta-edit')).toBeNull();
+    expect(document.querySelector('.todo-edit-area')).not.toBeNull();
+  });
 });
