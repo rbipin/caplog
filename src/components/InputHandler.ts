@@ -30,7 +30,7 @@ export class InputHandler {
   setLoading(loading: boolean): void {
     this.input.disabled = loading;
     const btn = document.getElementById('sendBtn') as HTMLButtonElement;
-    btn.textContent = loading ? '...' : 'Send';
+    btn.textContent = loading ? '...' : '↑';
     btn.disabled = loading;
   }
 
