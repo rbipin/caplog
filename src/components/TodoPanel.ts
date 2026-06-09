@@ -118,6 +118,74 @@ export class TodoPanel {
     });
   }
 
+  private startMetaEdit(el: HTMLElement, textEl: HTMLElement, todo: TodoItem): void {
+    if (el.querySelector('div.todo-meta-edit')) return;
+
+    // Close any open text edit on this item
+    if (el.querySelector('textarea.todo-edit-area')) {
+      textEl.innerHTML = escapeHtml(todo.text);
+    }
+
+    let importantState = todo.is_important === 1;
+
+    const editRow = document.createElement('div');
+    editRow.className = 'todo-meta-edit';
+
+    const deadlineInput = document.createElement('input');
+    deadlineInput.type = 'text';
+    deadlineInput.placeholder = 'due date (e.g. Jun 15)';
+    deadlineInput.value = todo.deadline ?? '';
+
+    const importanceBtn = document.createElement('button');
+    importanceBtn.className = `todo-meta-importance-btn${importantState ? ' active' : ''}`;
+    importanceBtn.textContent = importantState ? '★ Important' : '☆ Important';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'todo-meta-save';
+    saveBtn.textContent = 'Save';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'todo-meta-cancel';
+    cancelBtn.textContent = 'Cancel';
+
+    editRow.appendChild(deadlineInput);
+    editRow.appendChild(importanceBtn);
+    editRow.appendChild(saveBtn);
+    editRow.appendChild(cancelBtn);
+    el.appendChild(editRow);
+
+    deadlineInput.focus();
+
+    const close = () => { editRow.remove(); };
+
+    importanceBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      importantState = !importantState;
+      importanceBtn.textContent = importantState ? '★ Important' : '☆ Important';
+      importanceBtn.classList.toggle('active', importantState);
+    });
+
+    cancelBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      close();
+    });
+
+    saveBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const deadline = deadlineInput.value.trim() || null;
+      await execute(
+        'UPDATE todos SET deadline = ?, is_important = ? WHERE id = ?',
+        [deadline, importantState ? 1 : 0, todo.id]
+      );
+      await this.load();
+    });
+
+    deadlineInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') close();
+      if (e.key === 'Enter') saveBtn.click();
+    });
+  }
+
   async delete(id: number): Promise<void> {
     await execute('DELETE FROM todos WHERE id = ?', [id]);
     await this.load();
@@ -144,11 +212,22 @@ export class TodoPanel {
       return parts.length ? `<div class="todo-meta">${parts.join('')}</div>` : '';
     })();
 
+    const chipsHtml = status !== 'completed' ? (() => {
+      const deadlineChip = todo.deadline
+        ? `<span class="todo-chip filled">due ${escapeHtml(todo.deadline)}</span>`
+        : `<span class="todo-chip ghost">+ due date</span>`;
+      const importanceChip = todo.is_important
+        ? `<span class="todo-chip filled">★ important</span>`
+        : `<span class="todo-chip ghost">☆ important</span>`;
+      return `<div class="todo-chips">${deadlineChip}${importanceChip}</div>`;
+    })() : '';
+
     el.innerHTML = `
       <div class="todo-check">${checkInner}</div>
       <div style="flex:1">
         <div class="todo-text">${escapeHtml(todo.text)}</div>
         ${metaHtml}
+        ${chipsHtml}
       </div>
       <button class="todo-delete-btn" title="Delete">✕</button>
     `;
@@ -157,6 +236,7 @@ export class TodoPanel {
       el.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.todo-delete-btn')) return;
         if ((e.target as HTMLElement).closest('.todo-text')) return;
+        if ((e.target as HTMLElement).closest('.todo-chips')) return;
         this.complete(todo.id);
       });
 
@@ -165,6 +245,13 @@ export class TodoPanel {
       textEl.addEventListener('click', (e) => {
         e.stopPropagation();
         this.startTodoEdit(el, textEl, todo);
+      });
+
+      el.querySelectorAll<HTMLElement>('.todo-chip').forEach((chip) => {
+        chip.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.startMetaEdit(el, textEl, todo);
+        });
       });
     } else {
       const checkEl = el.querySelector<HTMLElement>('.todo-check');
