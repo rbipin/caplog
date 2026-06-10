@@ -312,8 +312,19 @@ class App {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  await initDB();
-  const app = new App();
-  await app.ready;
-  await getCurrentWindow().show();
+  const showWindow = async () => {
+    try { await getCurrentWindow().show(); } catch (e) { console.error('show window failed', e); }
+  };
+  const safetyTimer = setTimeout(() => { void showWindow(); }, 3000);
+  try {
+    await initDB();
+    const app = new App();
+    await app.ready;
+  } catch (e) {
+    console.error('CapLog init failed', e);
+    document.body.innerHTML = `<div style="color:#eee;background:#0e0e0e;padding:24px;font-family:monospace;white-space:pre-wrap;">CapLog failed to start:\n\n${String((e as Error)?.stack || e)}</div>`;
+  } finally {
+    clearTimeout(safetyTimer);
+    await showWindow();
+  }
 });

@@ -8,12 +8,20 @@ pub fn run() {
             tauri_plugin_sql::Builder::default()
                 .add_migrations(
                     "sqlite:caplog.db",
-                    vec![tauri_plugin_sql::Migration {
-                        version: 1,
-                        description: "init",
-                        sql: include_str!("../migrations/001_init.sql"),
-                        kind: tauri_plugin_sql::MigrationKind::Up,
-                    }],
+                    vec![
+                        tauri_plugin_sql::Migration {
+                            version: 1,
+                            description: "init",
+                            sql: include_str!("../migrations/001_init.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
+                        tauri_plugin_sql::Migration {
+                            version: 2,
+                            description: "settings_chat_days",
+                            sql: include_str!("../migrations/002_settings_chat_days.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
+                    ],
                 )
                 .build(),
         )
