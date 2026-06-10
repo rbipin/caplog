@@ -2,7 +2,7 @@ import { initDB, query, execute, getSetting } from './db.js';
 import { formatLogEntry } from './ai.js';
 import { exportMarkdown } from './export.js';
 import { getAdapter, runLLMMigration } from './llm/factory.js';
-import { escapeHtml, stripHtml, parseLocalDate, getToday, formatTime } from './utils.js';
+import { escapeHtml, stripHtml, parseLocalDate, getToday, formatTime, formatLocalDate, nowLocalIso } from './utils.js';
 import type { LLMAdapter } from './llm/adapter.js';
 import type { LogEntry, TodoItem, FeedItem } from './types.js';
 import { parseCommand } from './commands.js';
@@ -46,6 +46,7 @@ class App {
     this.chatArea.setSidebarRefresh(() => this.sidebar.refresh());
     this.chatArea.setAdapterGetter(() => this.adapter);
     this.todoPanel.setOnComplete(() => this.sidebar.refresh());
+    this.todoPanel.setOnChange((id, todo) => this.chatArea.updateTodo(id, todo));
     this.settings.setOnSave(() => { void this.applyChatDays().then(() => this.refreshAdapter()); });
     this.initHeader();
     this.inputHandler = new InputHandler((value) => this.handleInput(value));
@@ -96,7 +97,7 @@ class App {
 
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
-    const cutoffDate = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
+    const cutoffDate = formatLocalDate(cutoff);
     const dateRows = await query<{ date: string }>(
       `SELECT date FROM log_entries WHERE date >= ?
    UNION
@@ -154,10 +155,11 @@ class App {
             this.chatArea.append({
               time, type: 'todo-completed', typeLabel,
               content: `<s>${escapeHtml(t.text)}</s>`,
+              todoId: t.id,
             }, false);
           } else {
             const typeLabel = t.deadline ? `Todo created — due ${t.deadline}` : 'Todo created';
-            this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text) }, false);
+            this.chatArea.append({ time, type: 'todo-created', typeLabel, content: escapeHtml(t.text), todoId: t.id }, false);
           }
         } else if (item.kind === 'todo-completed') {
           const t = item.todo;
@@ -165,6 +167,7 @@ class App {
           this.chatArea.append({
             time, type: 'todo-completed', typeLabel: 'Todo completed',
             content: `<s>${escapeHtml(t.text)}</s>`,
+            todoId: t.id,
           }, false);
         }
       }
@@ -265,7 +268,7 @@ class App {
 
     await execute(
       'INSERT INTO log_entries (date, raw_text, formatted_text, created_at) VALUES (?, ?, ?, ?)',
-      [today, cmd.text, formatted, new Date().toISOString()]
+      [today, cmd.text, formatted, nowLocalIso()]
     );
 
     const rows = await query<{ id: number }>(
@@ -284,10 +287,10 @@ class App {
   }
 
   private async handleTodo(cmd: TodoCommand, time: string): Promise<void> {
-    await this.todoPanel.add(cmd.text, false, cmd.deadline);
+    const newId = await this.todoPanel.add(cmd.text, false, cmd.deadline);
     void this.sidebar.refresh();
     const label = cmd.deadline ? `Todo created — due ${cmd.deadline}` : 'Todo created';
-    this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(cmd.text) });
+    this.chatArea.append({ time, type: 'todo-created', typeLabel: label, content: escapeHtml(cmd.text), todoId: newId ?? undefined });
   }
 
   private async handleDone(cmd: DoneCommand, time: string): Promise<void> {
@@ -302,9 +305,9 @@ class App {
   }
 
   private async handleImportant(cmd: ImportantCommand, time: string): Promise<void> {
-    await this.todoPanel.add(cmd.text, true, null);
+    const newId = await this.todoPanel.add(cmd.text, true, null);
     void this.sidebar.refresh();
-    this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(cmd.text) });
+    this.chatArea.append({ time, type: 'todo-created', typeLabel: 'Todo prioritized', content: escapeHtml(cmd.text), todoId: newId ?? undefined });
   }
 }
 

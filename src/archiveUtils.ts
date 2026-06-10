@@ -1,4 +1,4 @@
-import { parseLocalDate } from './utils.js';
+import { parseLocalDate, formatLocalDate } from './utils.js';
 
 export interface DayData {
   date: string;
@@ -18,7 +18,7 @@ export function getWeekStart(dateStr: string): string {
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  return formatLocalDate(d);
 }
 
 export function buildWeeks(
@@ -48,7 +48,7 @@ export function buildWeeks(
     for (let i = 0; i < 5; i++) {
       const d = new Date(mon);
       d.setDate(mon.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = formatLocalDate(d);
       if (!existing.has(dateStr) && d.getFullYear() === year) {
         week.days.push({ date: dateStr, entryCount: 0, doneCount: 0 });
       }

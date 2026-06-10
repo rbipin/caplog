@@ -276,7 +276,10 @@ describe('TodoPanel', () => {
     // App boots with default chatDays=3 (getSetting returns null → fallback 3)
     const expected = new Date();
     expected.setDate(expected.getDate() - 3);
-    const expectedStr = expected.toISOString().split('T')[0];
+    const y = expected.getFullYear();
+    const m = String(expected.getMonth() + 1).padStart(2, '0');
+    const d = String(expected.getDate()).padStart(2, '0');
+    const expectedStr = `${y}-${m}-${d}`;
     expect(cutoffDate).toBe(expectedStr);
   });
 
