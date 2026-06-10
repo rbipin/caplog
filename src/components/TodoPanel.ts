@@ -1,5 +1,5 @@
 import { query, execute } from '../db.js';
-import { escapeHtml, getToday } from '../utils.js';
+import { escapeHtml, getToday, nowLocalIso, formatLocalDate } from '../utils.js';
 import { todoStatus, getTodoSections } from '../todoLogic.js';
 import type { TodoItem } from '../types.js';
 
@@ -7,6 +7,7 @@ export class TodoPanel {
   private listEl: HTMLElement;
   private countEl: HTMLElement;
   private onComplete: (() => void) | null = null;
+  private onChange: ((id: number, todo: TodoItem | null) => void) | null = null;
   private cutoffDays: number | undefined;
 
   constructor() {
@@ -18,6 +19,16 @@ export class TodoPanel {
     this.onComplete = cb;
   }
 
+  setOnChange(cb: (id: number, todo: TodoItem | null) => void): void {
+    this.onChange = cb;
+  }
+
+  private async notifyChange(id: number): Promise<void> {
+    if (!this.onChange) return;
+    const rows = await query<TodoItem>('SELECT * FROM todos WHERE id = ?', [id]);
+    this.onChange(id, rows[0] ?? null);
+  }
+
   async load(days?: number): Promise<void> {
     if (days !== undefined) this.cutoffDays = days;
 
@@ -26,7 +37,7 @@ export class TodoPanel {
       const today = getToday();
       const d = new Date(today + 'T00:00:00');
       d.setDate(d.getDate() - this.cutoffDays);
-      const cutoff = d.toISOString().split('T')[0];
+      const cutoff = formatLocalDate(d);
       todos = await query<TodoItem>(
         'SELECT * FROM todos WHERE is_completed = 0 OR (is_completed = 1 AND completed_at >= ?) ORDER BY is_important DESC, CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline ASC, created_at ASC',
         [cutoff]
@@ -39,21 +50,24 @@ export class TodoPanel {
     this.render(todos);
   }
 
-  async add(text: string, isImportant = false, deadline: string | null = null): Promise<void> {
+  async add(text: string, isImportant = false, deadline: string | null = null): Promise<number | null> {
     await execute(
       'INSERT INTO todos (text, is_important, deadline, created_at) VALUES (?, ?, ?, ?)',
-      [text, isImportant ? 1 : 0, deadline, new Date().toISOString()]
+      [text, isImportant ? 1 : 0, deadline, nowLocalIso()]
     );
+    const rows = await query<{ id: number }>('SELECT id FROM todos ORDER BY id DESC LIMIT 1');
     await this.load();
+    return rows[0]?.id ?? null;
   }
 
   async complete(id: number): Promise<void> {
     await execute(
       'UPDATE todos SET is_completed = 1, completed_at = ? WHERE id = ?',
-      [new Date().toISOString(), id]
+      [nowLocalIso(), id]
     );
     await this.load();
     this.onComplete?.();
+    await this.notifyChange(id);
   }
 
   async completeByText(text: string): Promise<boolean> {
@@ -71,6 +85,7 @@ export class TodoPanel {
     await execute('UPDATE todos SET is_completed = 0, completed_at = NULL WHERE id = ?', [id]);
     await this.load();
     this.onComplete?.();
+    await this.notifyChange(id);
   }
 
   private startTodoEdit(el: HTMLElement, textEl: HTMLElement, todo: TodoItem): void {
@@ -108,6 +123,7 @@ export class TodoPanel {
       saveBtn.disabled = true;
       await execute('UPDATE todos SET text = ? WHERE id = ?', [newText, todo.id]);
       await this.load();
+      await this.notifyChange(todo.id);
     });
 
     textarea.addEventListener('keydown', (e) => {
@@ -166,6 +182,7 @@ export class TodoPanel {
       const deadline = deadlineInput.value.trim() || null;
       await execute('UPDATE todos SET deadline = ? WHERE id = ?', [deadline, todo.id]);
       await this.load();
+      await this.notifyChange(todo.id);
     });
 
     deadlineInput.addEventListener('keydown', (e) => {
@@ -177,6 +194,7 @@ export class TodoPanel {
   async delete(id: number): Promise<void> {
     await execute('DELETE FROM todos WHERE id = ?', [id]);
     await this.load();
+    this.onChange?.(id, null);
   }
 
   private renderItem(todo: TodoItem): HTMLElement {
@@ -247,6 +265,7 @@ export class TodoPanel {
           [todo.is_important ? 0 : 1, todo.id]
         );
         await this.load();
+        await this.notifyChange(todo.id);
       });
     } else {
       const checkEl = el.querySelector<HTMLElement>('.todo-check');

@@ -2,7 +2,7 @@ import { execute } from '../db.js';
 import { formatLogEntry } from '../ai.js';
 import { escapeHtml } from '../utils.js';
 import type { LLMAdapter } from '../llm/adapter.js';
-import type { Message } from '../types.js';
+import type { Message, TodoItem } from '../types.js';
 
 export class ChatArea {
   private el: HTMLElement;
@@ -86,9 +86,39 @@ export class ChatArea {
       el.appendChild(deleteBtn);
     }
 
+    if (msg.todoId !== undefined) {
+      el.dataset.todoId = String(msg.todoId);
+      el.dataset.msgKind = msg.type === 'todo-completed' ? 'completed' : 'created';
+    }
+
     const container = this.currentSection ?? this.el;
     container.appendChild(el);
     if (scroll) this.el.scrollTop = this.el.scrollHeight;
+  }
+
+  updateTodo(id: number, todo: TodoItem | null): void {
+    const els = this.el.querySelectorAll<HTMLElement>(`[data-todo-id="${id}"]`);
+    if (!todo) {
+      els.forEach((el) => el.remove());
+      return;
+    }
+    for (const el of els) {
+      const kind = el.dataset.msgKind;
+      const typeDiv = el.querySelector<HTMLElement>('.msg-type');
+      const contentDiv = el.querySelector<HTMLElement>('.msg-content');
+      if (!typeDiv || !contentDiv) continue;
+
+      const showCompleted = kind === 'completed' || (kind === 'created' && !!todo.is_completed);
+      if (showCompleted) {
+        contentDiv.innerHTML = `<s>${escapeHtml(todo.text)}</s>`;
+        typeDiv.textContent = todo.deadline ? `Todo completed — was due ${todo.deadline}` : 'Todo completed';
+        typeDiv.className = 'msg-type todo-completed';
+      } else {
+        contentDiv.innerHTML = escapeHtml(todo.text);
+        typeDiv.textContent = todo.deadline ? `Todo created — due ${todo.deadline}` : 'Todo created';
+        typeDiv.className = 'msg-type todo-created';
+      }
+    }
   }
 
   private startEdit(msgEl: HTMLElement, contentEl: HTMLElement, msg: Message): void {

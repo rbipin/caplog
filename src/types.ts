@@ -17,6 +17,7 @@ export interface Message {
   content: string;
   rawInput?: string;
   entryId?: number;   // only set for 'log' type messages loaded from DB
+  todoId?: number;    // set for todo-created / todo-completed messages
 }
 
 export interface LogEntry {
