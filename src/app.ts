@@ -33,6 +33,7 @@ class App {
   private archiveConfirm: ArchiveConfirmModal;
   private adapter: LLMAdapter | null = null;
   private chatDays: number = 3;
+  private currentDate: string = '';
   readonly ready: Promise<void>;
 
   constructor() {
@@ -57,9 +58,11 @@ class App {
     try {
       await runLLMMigration();
       await this.applyChatDays();
+      this.currentDate = getToday();
       await this.loadRecentEntries(this.chatDays);
       this.adapter = await getAdapter();
       this.updateAiPill();
+      setInterval(() => { void this.checkDateRollover(); }, 60_000);
     } catch (err) {
       console.error('Startup load failed:', err);
       this.chatArea.append({
@@ -194,11 +197,29 @@ class App {
     this.modal.openDay(dateLabel, items, todos);
   }
 
-  private initHeader(): void {
+  private updateHeaderDate(): void {
     const dateEl = document.getElementById('headerDate')!;
     dateEl.textContent = new Date().toLocaleString('en-US', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
+  }
+
+  private async checkDateRollover(): Promise<void> {
+    const today = getToday();
+    if (today !== this.currentDate) {
+      this.currentDate = today;
+      await this.refreshForNewDay();
+    }
+  }
+
+  private async refreshForNewDay(): Promise<void> {
+    this.updateHeaderDate();
+    this.chatArea.clear();
+    await this.loadRecentEntries(this.chatDays);
+  }
+
+  private initHeader(): void {
+    this.updateHeaderDate();
 
     document.getElementById('sidebarToggleBtn')!.addEventListener('click', () => this.toggleSidebar());
     document.getElementById('viewLogBtn')!.addEventListener('click', () => this.openLogModal());

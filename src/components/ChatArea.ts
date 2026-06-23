@@ -43,6 +43,12 @@ export class ChatArea {
     if (isToday) this.todaySection = details;
   }
 
+  clear(): void {
+    this.el.innerHTML = '';
+    this.currentSection = null;
+    this.todaySection = null;
+  }
+
   focusToday(): void {
     if (this.todaySection) this.currentSection = this.todaySection;
   }
