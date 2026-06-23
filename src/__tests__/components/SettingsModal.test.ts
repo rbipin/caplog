@@ -140,6 +140,17 @@ describe('SettingsModal', () => {
     expect(deleteSettingMock).not.toHaveBeenCalledWith('chat_days');
   });
 
+  it('save() with empty API key still saves chat_days', async () => {
+    await openSettings();
+    // apiKeyInput is empty (reset in beforeEach)
+    (document.getElementById('chatDaysInput') as HTMLInputElement).value = '5';
+
+    document.getElementById('saveSettingsBtn')!.click();
+    await new Promise(r => setTimeout(r, 30));
+
+    expect(setSettingMock).toHaveBeenCalledWith('chat_days', '5');
+  });
+
   it('save() with valid inputs writes provider, key, model, baseUrl, and chat_days to db', async () => {
     await openSettings();
     (document.getElementById('apiKeyInput') as HTMLInputElement).value = 'sk-valid-key';

@@ -60,6 +60,8 @@ export class SettingsModal {
 
   private async save(): Promise<void> {
     const apiKey = this.apiKeyInput.value.trim();
+    const chatDays = Math.max(1, Math.min(14, parseInt(this.chatDaysInput.value, 10) || 3)).toString();
+    await setSetting('chat_days', chatDays);
 
     if (!apiKey) {
       await Promise.all([
@@ -76,7 +78,6 @@ export class SettingsModal {
     const provider = this.providerSelect.value;
     const model = this.modelInput.value.trim();
     const baseUrl = this.baseUrlInput.value.trim();
-    const chatDays = Math.max(1, Math.min(14, parseInt(this.chatDaysInput.value, 10) || 3)).toString();
 
     if (!model) {
       alert('Please enter a model name.');
@@ -87,7 +88,6 @@ export class SettingsModal {
     await setSetting('llm_api_key', apiKey);
     await setSetting('llm_model', model);
     await setSetting('llm_base_url', provider === 'openai' ? baseUrl : '');
-    await setSetting('chat_days', chatDays);
 
     this.onSaveCallback?.();
     this.close();
