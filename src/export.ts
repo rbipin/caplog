@@ -21,7 +21,7 @@ export async function exportMarkdown(): Promise<void> {
     md += `## ${d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}\n\n`;
 
     for (const item of day.items) {
-      md += `- ${item.text.replace(/\s+/g, ' ').trim()}\n`;
+      md += `${item.text.trim()}\n`;
     }
 
     if (day.completedTodos.length > 0) {

@@ -6,12 +6,6 @@ export function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export function stripHtml(html: string): string {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent ?? tmp.innerText ?? '';
-}
-
 export function parseLocalDate(dateStr: string): Date {
   return new Date(dateStr + 'T00:00:00');
 }

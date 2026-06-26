@@ -1,7 +1,8 @@
 import type { LogEntry, TodoItem } from './types.js';
-import { stripHtml, formatTime } from './utils.js';
+import { formatTime } from './utils.js';
 
 export interface DayLogItem {
+  /** Markdown content of the log entry (rendered via the shared Markdown component). */
   text: string;
   time: string;
 }
@@ -36,7 +37,7 @@ export function buildDayLogs(entries: LogEntry[], completedTodos: TodoItem[]): D
   };
 
   for (const e of entries) {
-    dayFor(e.date).items.push({ text: stripHtml(e.formatted_text), time: formatTime(e.created_at) });
+    dayFor(e.date).items.push({ text: e.formatted_text, time: formatTime(e.created_at) });
   }
 
   for (const t of completedTodos) {

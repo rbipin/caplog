@@ -4,7 +4,7 @@
 
 A minimal, distraction-free desktop journaling and task-tracking app. Log what you did, capture todos, and let AI format your entries — all from a single text input.
 
-Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
+Built with **Tauri v2** + **React + TypeScript** + **TanStack Query** + **SQLite**. Log entries are stored as **Markdown** and rendered with **react-markdown**.
 
 ![CapLog screenshot](docs/assets/caplog-screen.png)
 
@@ -37,7 +37,7 @@ Built with **Tauri v2** + **Vanilla TypeScript** + **SQLite**.
 │  │ previews │   │  (chat-style)    │   │ Due/Overdue │ │
 │  │ stats    │   │                  │   │ Open        │ │
 │  │          │   │  ┌────────────┐  │   │ Comp. today │ │
-│  │          │   │  │InputHandler│  │   │             │ │
+│  │          │   │  │ ChatInput  │  │   │             │ │
 │  │          │   │  │ (textarea) │  │   │             │ │
 │  └──────────┘   │  └────────────┘  │   └─────────────┘ │
 │                 └──────────────────┘                    │
@@ -69,21 +69,21 @@ flowchart TD
 
     D --> H[getAdapter\noptional AI]
     H -->|adapter available| I[formatLogEntry]
-    H -->|no adapter| J[wrap as plain HTML]
-    I --> K[DB INSERT log_entries]
+    H -->|no adapter| J[wrap as Markdown bullet]
+    I --> K[useInsertLogEntry → INSERT log_entries]
     J --> K
-    K --> L[chatArea.append]
-    L --> M[sidebar.refresh]
+    K --> L[Query invalidation\n→ ChatArea refetch]
+    L --> M[Sidebar / dayStats refetch]
 
-    E --> N[TodoPanel.add\nis_important=0]
-    F --> O[TodoPanel.add\nis_important=1]
-    G --> P[TodoPanel.completeByText]
+    E --> N[useAddTodo\nis_important=0]
+    F --> O[useAddTodo\nis_important=1]
+    G --> P[useCompleteTodoByText]
 
-    N --> Q[DB INSERT todos]
+    N --> Q[INSERT todos]
     O --> Q
-    P --> R[DB UPDATE todos]
+    P --> R[UPDATE todos]
 
-    Q --> S[chatArea.append]
+    Q --> S[Query invalidation]
     R --> S
     S --> M
 ```
@@ -92,28 +92,44 @@ flowchart TD
 
 ```
 src/
-├── app.ts                  ← App class + DOMContentLoaded bootstrap
+├── main.tsx                ← initDB → migrations → render <Providers><App/>
+├── app/
+│   ├── App.tsx             ← Root layout, header, modal + notice state, submit logic
+│   ├── providers.tsx       ← QueryClient + AppConfigProvider
+│   └── AppConfigContext.tsx← chatDays, LLM adapter, current date (rollover)
 ├── components/
-│   ├── ChatArea.ts         ← Central log feed
-│   ├── InputHandler.ts     ← Textarea, submit, command highlighting
-│   ├── ArchiveModal.ts     ← Year-view calendar archive + keyword search
-│   ├── ArchiveConfirmModal.ts ← Confirmation dialog for archive deletion
-│   ├── LogModal.ts         ← Monthly log overlay
-│   ├── SettingsModal.ts    ← LLM provider/model/chat_days config
-│   ├── Sidebar.ts          ← Past days list
-│   └── TodoPanel.ts        ← Right-panel todo list
+│   ├── ChatArea.tsx        ← Central log feed (Markdown), inline edit/delete
+│   ├── ChatInput.tsx       ← Textarea, submit, command highlighting
+│   ├── Markdown.tsx        ← Shared react-markdown renderer (raw HTML disabled)
+│   ├── ArchiveModal.tsx    ← Year-view calendar archive + keyword search
+│   ├── ArchiveConfirmModal.tsx ← Confirmation dialog for archive deletion
+│   ├── LogModal.tsx        ← Monthly / single-day log overlay
+│   ├── SettingsModal.tsx   ← LLM provider/model/chat_days config
+│   ├── Sidebar.tsx         ← Past days list
+│   ├── TodoPanel.tsx       ← Right-panel todo list
+│   └── TodoItem.tsx        ← Single todo row with inline editing
+├── data/                   ← Repositories: the only modules that import db.ts
+│   ├── logEntriesRepo.ts
+│   ├── todosRepo.ts
+│   ├── settingsRepo.ts
+│   └── archiveRepo.ts
+├── hooks/                  ← TanStack Query hooks (useLogEntries, useTodos, …)
+├── markdown/
+│   ├── htmlToMarkdown.ts   ← Legacy HTML → Markdown converter
+│   └── contentMigration.ts ← One-time startup HTML→Markdown migration
 ├── llm/
 │   ├── adapter.ts          ← LLMAdapter interface
 │   ├── anthropic.ts        ← Anthropic adapter
 │   ├── factory.ts          ← getAdapter() — reads settings, returns adapter
 │   └── openai.ts           ← OpenAI-compatible adapter
-├── ai.ts                   ← formatLogEntry() — calls LLM to format raw text
+├── ai.ts                   ← formatLogEntry() — LLM formats raw text to Markdown
 ├── commands.ts             ← parseCommand() — parses slash commands
 ├── db.ts                   ← query/execute/getSetting/setSetting wrappers
 ├── export.ts               ← exportMarkdown()
+├── feed.ts                 ← buildFeed() — pure chat-feed builder
 ├── todoLogic.ts            ← todoStatus(), getTodoSections()
-├── types.ts                ← TodoItem, Message, LogEntry, DayStats
-├── utils.ts                ← escapeHtml(), stripHtml()
+├── types.ts                ← TodoItem, LogEntry, DayStats
+├── utils.ts                ← escapeHtml(), date helpers
 └── styles.css
 ```
 
@@ -336,9 +352,11 @@ Fonts: **Instrument Serif** (headings) + **DM Mono** (body). Dark theme via CSS 
 | Layer | Technology |
 |-------|-----------|
 | Desktop shell | Tauri v2 |
-| Frontend | Vanilla TypeScript + Vite |
+| Frontend | React + TypeScript + Vite |
+| Data/state | TanStack Query (React Query) |
+| Content rendering | Markdown via react-markdown + remark-gfm |
 | Styling | CSS custom properties, no framework |
 | Database | SQLite via `tauri-plugin-sql` |
 | AI formatting | Anthropic API / OpenAI-compatible |
-| Tests | Vitest + happy-dom |
+| Tests | Vitest + happy-dom + Testing Library |
 | Package manager | pnpm |

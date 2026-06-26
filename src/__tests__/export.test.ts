@@ -13,9 +13,9 @@ vi.mock('../db.js', () => ({ query: queryMock }));
 import { exportMarkdown } from '../export.js';
 
 const sampleEntries = [
-  { date: '2026-06-01', formatted_text: '<ul><li>Entry one</li></ul>', created_at: '2026-06-01T10:00:00Z' },
-  { date: '2026-06-01', formatted_text: '<ul><li>Entry two</li></ul>', created_at: '2026-06-01T11:00:00Z' },
-  { date: '2026-05-31', formatted_text: '<p>Older entry</p>', created_at: '2026-05-31T09:00:00Z' },
+  { date: '2026-06-01', formatted_text: '- Entry one', created_at: '2026-06-01T10:00:00Z' },
+  { date: '2026-06-01', formatted_text: '- Entry two', created_at: '2026-06-01T11:00:00Z' },
+  { date: '2026-05-31', formatted_text: 'Older entry', created_at: '2026-05-31T09:00:00Z' },
 ];
 
 function routeQuery(entries: unknown[], completedTodos: unknown[] = []): void {
@@ -55,23 +55,24 @@ describe('exportMarkdown', () => {
     expect(headings.some(h => h.includes('2026'))).toBe(true);
   });
 
-  it('HTML is stripped from formatted_text in output', async () => {
-    await exportMarkdown();
-    const md = writeTextFileMock.mock.calls[0][1] as string;
-    expect(md).not.toContain('<ul>');
-    expect(md).not.toContain('<li>');
-    expect(md).not.toContain('<p>');
-    expect(md).toContain('Entry one');
-    expect(md).toContain('Entry two');
-    expect(md).toContain('Older entry');
+  it('Markdown content is emitted directly (no HTML, passthrough)', () => {
+    return exportMarkdown().then(() => {
+      const md = writeTextFileMock.mock.calls[0][1] as string;
+      expect(md).not.toContain('<ul>');
+      expect(md).not.toContain('<li>');
+      expect(md).not.toContain('<p>');
+      expect(md).toContain('Entry one');
+      expect(md).toContain('Entry two');
+      expect(md).toContain('Older entry');
+    });
   });
 
-  it('each entry is rendered as a list item (prefixed with -)', async () => {
+  it('each bullet entry is preserved as a list item', async () => {
     await exportMarkdown();
     const md = writeTextFileMock.mock.calls[0][1] as string;
     expect(md).toContain('- Entry one');
     expect(md).toContain('- Entry two');
-    expect(md).toContain('- Older entry');
+    expect(md).toContain('Older entry');
   });
 
   it('save() is called with markdown filter and a default path', async () => {

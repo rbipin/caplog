@@ -7,7 +7,7 @@ function entry(overrides: Partial<LogEntry> = {}): LogEntry {
     id: 1,
     date: '2026-06-25',
     raw_text: 'raw',
-    formatted_text: '<ul><li>did a thing</li></ul>',
+    formatted_text: '- did a thing',
     created_at: '2026-06-25T10:00:00.000',
     ...overrides,
   };
@@ -27,15 +27,14 @@ function todo(overrides: Partial<TodoItem> = {}): TodoItem {
 }
 
 describe('buildDayLogs', () => {
-  it('groups log entries by date and strips HTML from formatted_text', () => {
+  it('groups log entries by date and passes Markdown content through unchanged', () => {
     const days = buildDayLogs(
-      [entry({ formatted_text: '<ul><li>Meeting notes</li></ul>' })],
+      [entry({ formatted_text: '- Meeting notes' })],
       []
     );
     expect(days).toHaveLength(1);
     expect(days[0].date).toBe('2026-06-25');
-    expect(days[0].items[0].text).toBe('Meeting notes');
-    expect(days[0].items[0].text).not.toContain('<');
+    expect(days[0].items[0].text).toBe('- Meeting notes');
   });
 
   it('attaches completed todos to the day they were completed (by completed_at)', () => {
@@ -85,8 +84,8 @@ describe('buildDayLogs', () => {
   it('preserves incoming order of items and completed todos within a day', () => {
     const days = buildDayLogs(
       [
-        entry({ formatted_text: '<p>first</p>', created_at: '2026-06-25T09:00:00.000' }),
-        entry({ formatted_text: '<p>second</p>', created_at: '2026-06-25T10:00:00.000' }),
+        entry({ formatted_text: 'first', created_at: '2026-06-25T09:00:00.000' }),
+        entry({ formatted_text: 'second', created_at: '2026-06-25T10:00:00.000' }),
       ],
       [
         todo({ id: 1, text: 'early', completed_at: '2026-06-25T11:00:00.000' }),
