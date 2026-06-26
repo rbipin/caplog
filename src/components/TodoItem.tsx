@@ -198,15 +198,13 @@ export function TodoItem({ todo }: { todo: Todo }) {
 }
 
 function TodoMeta({ todo, status }: { todo: Todo; status: ReturnType<typeof todoStatus> }) {
-  const showImportant = status === 'important';
   const showOverdue = status === 'overdue';
-  if (!todo.deadline && !showImportant && !showOverdue) return null;
+  if (!todo.deadline && !showOverdue) return null;
   return (
     <div className="todo-meta">
       {todo.deadline && (
         <span className={`todo-deadline${showOverdue ? ' overdue' : ''}`}>{todo.deadline}</span>
       )}
-      {showImportant && <span className="todo-badge important">important</span>}
       {showOverdue && <span className="todo-badge overdue">overdue</span>}
     </div>
   );
