@@ -279,6 +279,23 @@ html, body {
   margin-left: 6px;
 }
 
+.log-view-subhead {
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.log-view-todo {
+  color: var(--text-dim);
+}
+
+.log-view-todo::before {
+  content: '';
+}
+
 .modal-footer {
   padding: 12px 20px;
   border-top: 1px solid var(--border);

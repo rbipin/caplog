@@ -26,17 +26,27 @@ export class LogModal {
     });
   }
 
-  open(entries: { date: string; items: { text: string; time: string }[] }[]): void {
+  open(entries: { date: string; items: { text: string; time: string }[]; completedTodos?: TodoItem[] }[]): void {
     const now = new Date();
     this.subtitle.textContent = `Log entries — ${now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}`;
-    this.body.innerHTML = entries.map((entry) => `
+    this.body.innerHTML = entries.map((entry) => {
+      const completed = entry.completedTodos ?? [];
+      const completedHtml = completed.length > 0 ? `
+        <div class="log-view-subhead">Completed Todos</div>
+        ${completed.map((t) => `
+          <div class="log-view-item log-view-todo">✓ ${escapeHtml(t.text)}</div>
+        `).join('')}
+      ` : '';
+      return `
       <div class="log-view-entry">
         <div class="log-view-date">${entry.date}</div>
         ${entry.items.map((item) => `
           <div class="log-view-item">${item.text} <span class="log-view-time">${item.time}</span></div>
         `).join('')}
+        ${completedHtml}
       </div>
-    `).join('');
+    `;
+    }).join('');
     this.overlay.classList.add('visible');
   }
 

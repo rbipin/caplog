@@ -7,6 +7,7 @@ import type { LLMAdapter } from './llm/adapter.js';
 import type { LogEntry, TodoItem, FeedItem } from './types.js';
 import { parseCommand } from './commands.js';
 import type { ParsedCommand } from './commands.js';
+import { buildDayLogs } from './logAggregation.js';
 import { LogModal } from './components/LogModal.js';
 import { InputHandler } from './components/InputHandler.js';
 import { ChatArea } from './components/ChatArea.js';
@@ -186,7 +187,7 @@ class App {
 
     const [entries, todos] = await Promise.all([
       query<LogEntry>('SELECT * FROM log_entries WHERE date = ? ORDER BY created_at ASC', [date]),
-      query<TodoItem>('SELECT * FROM todos WHERE created_at LIKE ? ORDER BY created_at ASC', [date + '%']),
+      query<TodoItem>('SELECT * FROM todos WHERE DATE(completed_at) = ? ORDER BY completed_at ASC', [date]),
     ]);
 
     const items = entries.map((e) => ({
@@ -236,21 +237,18 @@ class App {
   }
 
   private async openLogModal(): Promise<void> {
-    const entries = await query<LogEntry>(
-      'SELECT * FROM log_entries ORDER BY date DESC, created_at ASC'
-    );
+    const [entries, completedTodos] = await Promise.all([
+      query<LogEntry>('SELECT * FROM log_entries ORDER BY date DESC, created_at ASC'),
+      query<TodoItem>('SELECT * FROM todos WHERE completed_at IS NOT NULL ORDER BY completed_at ASC'),
+    ]);
 
-    const grouped = new Map<string, { text: string; time: string }[]>();
-    for (const e of entries) {
-      const time = formatTime(e.created_at);
-      if (!grouped.has(e.date)) grouped.set(e.date, []);
-      grouped.get(e.date)!.push({ text: stripHtml(e.formatted_text), time });
-    }
-
-    const modalData = Array.from(grouped.entries()).map(([date, items]) => {
-      const d = parseLocalDate(date);
-      const label = d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-      return { date: label, items };
+    const modalData = buildDayLogs(entries, completedTodos).map((day) => {
+      const d = parseLocalDate(day.date);
+      return {
+        date: d.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+        items: day.items,
+        completedTodos: day.completedTodos,
+      };
     });
 
     this.modal.open(modalData);

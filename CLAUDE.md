@@ -42,12 +42,14 @@ Each UI class lives in its own file under `src/components/`. `src/app.ts` is the
 | `src/components/ChatArea.ts` | `ChatArea` | Renders the central chat-style feed; today's section is at the top, past days are collapsible below. Tracks `todaySection` separately — call `focusToday()` after loading so new entries always land in today's section. |
 | `src/components/TodoPanel.ts` | `TodoPanel` | Manages the right-panel `TodoItem` list; sections: Important → Due/Overdue → Open → Completed. Call `setOnComplete(cb)` to receive a callback whenever a todo is completed or reopened (used to refresh the sidebar count). `load(days?)` accepts an optional cutoff so completed todos older than `days` days are excluded. Open todos show inline chips: clicking the importance chip (`☆`/`★`) directly toggles `is_important`; clicking the deadline chip opens an inline `div.todo-meta-edit` form for editing the due date. |
 | `src/components/Sidebar.ts` | `Sidebar` | Left panel; lists past `DayEntry` days with preview and stats. `refresh(days?)` accepts an optional day count (stored internally) to LIMIT the query. |
-| `src/components/LogModal.ts` | `LogModal` | Overlay modal showing all log entries for the month; footer has an Export .md button wired to `exportMarkdown()` |
+| `src/components/LogModal.ts` | `LogModal` | Overlay modal showing all log entries for the month, grouped by day; each day also lists todos completed that day in a "Completed Todos" sub-section. Footer has an Export .md button wired to `exportMarkdown()` |
 | `src/components/SettingsModal.ts` | `SettingsModal` | LLM provider/key/model/chat_days configuration overlay. Call `setOnSave(cb)` to register a callback invoked after a successful save (used by `App` to trigger `applyChatDays()`). |
 | `src/components/ArchiveModal.ts` | `ArchiveModal` | Full-year calendar archive grouped by week; search entries by keyword, click a day to open its log via `onDaySelect` callback. Uses `buildWeeks()` from `src/archiveUtils.ts`. |
 | `src/components/ArchiveConfirmModal.ts` | `ArchiveConfirmModal` | Confirmation dialog shown before permanently deleting archive entries. Call `show(title, body, onConfirm)` to display with a custom message; fires `onConfirm` only if the user clicks Delete. |
 
 **Archive utilities** live in `src/archiveUtils.ts`: exports `DayData`, `WeekData`, `getWeekStart()`, and `buildWeeks()` — helpers that aggregate DB rows into week buckets for the `ArchiveModal`.
+
+**Log aggregation** lives in `src/logAggregation.ts`: exports `DayLog` and `buildDayLogs(entries, completedTodos)` — groups log entries and completed todos into per-day buckets (sorted date-descending, todo-only days included). Shared by `App.openLogModal()` (View Log) and `exportMarkdown()` so both surfaces show completed todos. A todo's day is keyed off `completed_at`, matching the sidebar count.
 
 **Command parsing** is handled in `src/commands.ts` via `parseCommand()`. Plain text → `log`. Slash commands: `/todo`, `/done`, `/important`, `/by`.
 

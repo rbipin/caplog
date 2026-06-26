@@ -135,6 +135,16 @@ src/
 
 SQLite database is managed by `tauri-plugin-sql`. Migrations run automatically at startup from `src-tauri/migrations/`.
 
+### Where the database is stored
+
+The connection string is the relative path `sqlite:caplog.db` (see `src/db.ts` and `src-tauri/src/lib.rs`). `tauri-plugin-sql` resolves relative paths into the app config directory, which is derived from the bundle `identifier` (`com.bipin.caplog` in `src-tauri/tauri.conf.json`). Dev and production builds share the same identifier, so they use the same file.
+
+| Platform | Location |
+|----------|----------|
+| Windows | `%APPDATA%\com.bipin.caplog\caplog.db` (e.g. `C:\Users\<you>\AppData\Roaming\com.bipin.caplog\caplog.db`) |
+| macOS | `~/Library/Application Support/com.bipin.caplog/caplog.db` |
+| Linux | `~/.config/com.bipin.caplog/caplog.db` |
+
 ### `log_entries`
 | Column | Type | Notes |
 |--------|------|-------|

@@ -2,32 +2,37 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { query } from './db.js';
 import { parseLocalDate, getToday } from './utils.js';
-
-interface ExportEntry {
-  date: string;
-  formatted_text: string;
-  created_at: string;
-}
+import { buildDayLogs } from './logAggregation.js';
+import type { LogEntry, TodoItem } from './types.js';
 
 export async function exportMarkdown(): Promise<void> {
-  const entries = await query<ExportEntry>(
-    'SELECT date, formatted_text, created_at FROM log_entries ORDER BY date DESC, created_at ASC'
-  );
-
-  const grouped = new Map<string, string[]>();
-  const tmp = document.createElement('div');
-  for (const e of entries) {
-    if (!grouped.has(e.date)) grouped.set(e.date, []);
-    tmp.innerHTML = e.formatted_text;
-    const text = (tmp.textContent ?? tmp.innerText ?? '').replace(/\s+/g, ' ').trim();
-    grouped.get(e.date)!.push(`- ${text}`);
-  }
+  const [entries, completedTodos] = await Promise.all([
+    query<LogEntry>(
+      'SELECT date, formatted_text, created_at FROM log_entries ORDER BY date DESC, created_at ASC'
+    ),
+    query<TodoItem>(
+      'SELECT * FROM todos WHERE completed_at IS NOT NULL ORDER BY completed_at ASC'
+    ),
+  ]);
 
   let md = '# CapLog Export\n\n';
-  for (const [date, lines] of grouped.entries()) {
-    const d = parseLocalDate(date);
+  for (const day of buildDayLogs(entries, completedTodos)) {
+    const d = parseLocalDate(day.date);
     md += `## ${d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}\n\n`;
-    md += lines.join('\n') + '\n\n';
+
+    for (const item of day.items) {
+      md += `- ${item.text.replace(/\s+/g, ' ').trim()}\n`;
+    }
+
+    if (day.completedTodos.length > 0) {
+      if (day.items.length > 0) md += '\n';
+      md += '**Completed Todos**\n\n';
+      for (const t of day.completedTodos) {
+        md += `- [x] ${t.text.replace(/\s+/g, ' ').trim()}\n`;
+      }
+    }
+
+    md += '\n';
   }
 
   const today = getToday();

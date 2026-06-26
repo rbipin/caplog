@@ -18,19 +18,33 @@ const sampleEntries = [
   { date: '2026-05-31', formatted_text: '<p>Older entry</p>', created_at: '2026-05-31T09:00:00Z' },
 ];
 
+function routeQuery(entries: unknown[], completedTodos: unknown[] = []): void {
+  queryMock.mockImplementation(async (sql: string) => {
+    if (String(sql).includes('FROM todos')) return completedTodos;
+    return entries;
+  });
+}
+
 describe('exportMarkdown', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    queryMock.mockResolvedValue(sampleEntries);
+    routeQuery(sampleEntries);
     saveMock.mockResolvedValue('/tmp/export.md');
     writeTextFileMock.mockResolvedValue(undefined);
   });
 
   it('queries log_entries ordered by date DESC and created_at ASC', async () => {
     await exportMarkdown();
-    const [sql] = queryMock.mock.calls[0];
-    expect(sql).toContain('log_entries');
-    expect(sql).toMatch(/ORDER BY.*date DESC.*created_at ASC/i);
+    const logCall = queryMock.mock.calls.find(([sql]) => String(sql).includes('log_entries'));
+    expect(logCall).toBeDefined();
+    expect(logCall![0]).toMatch(/ORDER BY.*date DESC.*created_at ASC/i);
+  });
+
+  it('queries completed todos (completed_at IS NOT NULL)', async () => {
+    await exportMarkdown();
+    const todoCall = queryMock.mock.calls.find(([sql]) => String(sql).includes('FROM todos'));
+    expect(todoCall).toBeDefined();
+    expect(todoCall![0]).toMatch(/completed_at IS NOT NULL/i);
   });
 
   it('entries are grouped by date with correct headings', async () => {
@@ -97,5 +111,28 @@ describe('exportMarkdown', () => {
     const md = writeTextFileMock.mock.calls[0][1] as string;
     const headings = md.match(/^## /gm) ?? [];
     expect(headings.length).toBe(2);
+  });
+
+  it('renders completed todos as checklist items under their completion day', async () => {
+    routeQuery(sampleEntries, [
+      { id: 1, text: 'Ship release', is_important: 0, is_completed: 1, deadline: null,
+        created_at: '2026-05-30T09:00:00.000', completed_at: '2026-06-01T14:00:00.000' },
+    ]);
+    await exportMarkdown();
+    const md = writeTextFileMock.mock.calls[0][1] as string;
+    expect(md).toContain('**Completed Todos**');
+    expect(md).toContain('- [x] Ship release');
+  });
+
+  it('includes a heading for a day that has only completed todos and no log entries', async () => {
+    routeQuery(sampleEntries, [
+      { id: 2, text: 'Todo-only work', is_important: 0, is_completed: 1, deadline: null,
+        created_at: '2026-06-09T09:00:00.000', completed_at: '2026-06-10T14:00:00.000' },
+    ]);
+    await exportMarkdown();
+    const md = writeTextFileMock.mock.calls[0][1] as string;
+    const headings = md.match(/^## .+$/gm) ?? [];
+    expect(headings.length).toBe(3);
+    expect(md).toContain('- [x] Todo-only work');
   });
 });
