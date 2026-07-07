@@ -1,53 +1,84 @@
+<h1 align="center"><img src="src-tauri/icons/32x32.png" width="28" alt="CapLog icon"> CapLog</h1>
+
+<p align="center">
+  A minimal, distraction-free desktop app for daily journaling and task tracking — log what you did, capture todos, and let AI format your entries, all from a single text input.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Tauri-v2-24C8D8?logo=tauri&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-TypeScript-3178C6?logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLite-local--first-003B57?logo=sqlite" />
+  <img src="https://img.shields.io/badge/content-Markdown-000000?logo=markdown" />
+  <img src="https://img.shields.io/badge/pnpm-managed-F69220?logo=pnpm&logoColor=white" />
+</p>
+
+<br />
+
 ![Captains Log](./docs/assets/CapLog-Cover.png)
 
-# <img src="src-tauri/icons/32x32.png" width="32" alt="CapLog icon"> CapLog
-
-<!-- description -->
-A minimal, distraction-free desktop journaling and task-tracking app. Log what you did, capture todos, and let AI format your entries — all from a single text input.
-
-Built with **Tauri v2** + **React + TypeScript** + **TanStack Query** + **SQLite**. Log entries are stored as **Markdown** and rendered with **react-markdown**.
-<!-- /description -->
 ![CapLog screenshot](docs/assets/caplog-screen.png)
 
 ---
 
-## Purpose
+## Overview
+
+<!-- description -->
+CapLog is a chat-style daily log: type into one input and it becomes a **Markdown journal entry** or a **todo** (via slash commands). AI optionally cleans up each entry as you write. Everything is stored locally in SQLite.
+<!-- /description -->
+
 <!-- purpose -->
 There are plenty of note-taking apps and todo apps — but they're always separate. I used to write my todos on sticky notes and end up losing the sticky note. Nothing worked as a single suite that doubles as a quick daily log. CapLog exists to fill that gap: one place that helps you quickly journal your day and track your tasks together.
+
+The outcome is a simple, quick app that stays open on your desktop, where you can quickly journal your daily work progress — so when you want to know what you did last week, it's all right there. AI is integrated into the flow: as you type your journal, it converts your text into bullets, shortens it, and fixes spelling mistakes.
 <!-- /purpose -->
 
-## Outcome
-<!-- outcome -->
-A simple, quick app that stays open on your desktop, where you can quickly journal your daily work progress — so when you want to know what you did last week, it's all right there. AI is integrated into the flow: as you type your journal, it converts your text into bullets, shortens it, and fixes spelling mistakes.
-<!-- /outcome -->
-
-## Tech Stack
-<!-- techStack -->
-| Layer | Technology |
-|-------|------------|
-| Desktop shell | Tauri v2 (Rust backend) |
-| Frontend | React + TypeScript, built with Vite |
-| State | TanStack Query |
-| Storage | SQLite (via tauri-plugin-sql, auto-run migrations) |
-| Content | Markdown, rendered with react-markdown (remark-gfm) |
-| AI | Anthropic or OpenAI-compatible LLMs (optional) |
-| Testing | Vitest + Testing Library + happy-dom |
-| Package manager | pnpm |
-<!-- /techStack -->
 ---
 
 ## Features
 
-- **Log entries** — type anything and it's formatted by AI into a clean structured entry
-- **Todo management** — create, prioritize, and complete tasks with deadline support; click the importance chip to instantly toggle priority, click the deadline chip to set or clear a due date inline
-- **Sidebar history** — browse past days with entry previews and per-day completed todo counts
-- **Chat feed** — today's entries at the top; past days shown below as collapsible sections
-- **Log modal** — view all entries for the month in one overlay, with export
-- **AI formatting** — Anthropic or OpenAI-compatible backends (optional; falls back to raw text)
-- **Archive navigation** — calendar-style year view grouped by week; search across past entries by keyword, jump to any day with a click
-- **Archive clean** — hover trash icons on day tiles, week cards, and month dividers; confirmation dialog shows exact entry and todo counts before permanently deleting the selected period
-- **Export** — export all log entries to a Markdown file (header button or log modal footer)
+<!-- outcome -->
+| | |
+|---|---|
+| **Log entries** | Type anything and it's formatted by AI into a clean structured entry |
+| **Todo management** | Create, prioritize, and complete tasks with deadlines; toggle priority or set a due date inline via chips |
+| **Sidebar history** | Browse past days with entry previews and per-day completed todo counts |
+| **Chat feed** | Today's entries at the top; past days shown below as collapsible sections |
+| **Log modal** | View all entries for the month in one overlay, with export |
+| **AI formatting** | Anthropic or OpenAI-compatible backends (optional; falls back to raw text) |
+| **Archive navigation** | Calendar-style year view grouped by week; keyword search across past entries; jump to any day |
+| **Archive clean** | Trash icons on day/week/month; confirmation shows exact entry and todo counts before deleting |
+| **Export** | Export all log entries to a Markdown file (header button or log modal footer) |
+<!-- /outcome -->
 
+---
+
+## Tech Stack
+
+<!-- techStack -->
+| Layer | Choice |
+|---|---|
+| Desktop shell | Tauri v2 (Rust backend) |
+| Frontend | React + TypeScript, built with Vite |
+| State | TanStack Query (invalidate-driven, `staleTime: Infinity`) |
+| Storage | SQLite via `tauri-plugin-sql` — migrations auto-run at startup |
+| Content | Markdown, rendered with react-markdown + remark-gfm (raw HTML disabled) |
+| Styling | CSS custom properties, no framework |
+| AI | Anthropic or OpenAI-compatible LLMs (optional) |
+| Testing | Vitest + Testing Library + happy-dom |
+| Package manager | pnpm |
+<!-- /techStack -->
+
+---
+
+## Commands
+
+| Input | Action |
+|-------|--------|
+| `any plain text` | Creates a log entry (AI-formatted if configured) |
+| `/todo <task>` | Creates an open todo |
+| `/todo <task> /by <date>` | Creates a todo with a deadline |
+| `/important <task>` | Creates a high-priority todo |
+| `/done <partial task text>` | Marks the first matching open todo as complete |
 ---
 
 ## Architecture
@@ -114,7 +145,9 @@ flowchart TD
     S --> M
 ```
 
-### Frontend source layout
+---
+
+## Project Structure
 
 ```
 src/
@@ -161,19 +194,7 @@ src/
 
 ---
 
-## Commands
-
-| Input | Action |
-|-------|--------|
-| `any plain text` | Creates a log entry (AI-formatted if configured) |
-| `/todo <task>` | Creates an open todo |
-| `/todo <task> /by <date>` | Creates a todo with a deadline |
-| `/important <task>` | Creates a high-priority todo |
-| `/done <partial task text>` | Marks the first matching open todo as complete |
-
----
-
-## Database schema
+## Database Schema
 
 SQLite database is managed by `tauri-plugin-sql`. Migrations run automatically at startup from `src-tauri/migrations/`.
 
@@ -225,7 +246,7 @@ The connection string is the relative path `sqlite:caplog.db` (see `src/db.ts` a
 
 ---
 
-## LLM configuration
+## Configuration
 
 Open **Settings** (gear icon) and configure:
 
@@ -241,7 +262,16 @@ LLM is **optional** — if not configured, entries are saved as plain text wrapp
 
 ---
 
-## Development setup
+## Getting Started
+
+### Prerequisites
+
+- [Rust](https://www.rust-lang.org/tools/install)
+- [Node.js](https://nodejs.org/)
+- [pnpm](https://pnpm.io/installation)
+- [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
+
+### Development
 
 ```bash
 # Install dependencies
@@ -262,8 +292,6 @@ pnpm test
 # Build distributable app
 pnpm tauri build
 ```
-
-**Prerequisites:** [Rust](https://www.rust-lang.org/tools/install), [Node.js](https://nodejs.org/), [pnpm](https://pnpm.io/installation), [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ### Building for macOS
 
@@ -373,16 +401,8 @@ Fonts: **Instrument Serif** (headings) + **DM Mono** (body). Dark theme via CSS 
 
 ---
 
-## Tech stack
+## License
 
-| Layer | Technology |
-|-------|-----------|
-| Desktop shell | Tauri v2 |
-| Frontend | React + TypeScript + Vite |
-| Data/state | TanStack Query (React Query) |
-| Content rendering | Markdown via react-markdown + remark-gfm |
-| Styling | CSS custom properties, no framework |
-| Database | SQLite via `tauri-plugin-sql` |
-| AI formatting | Anthropic API / OpenAI-compatible |
-| Tests | Vitest + happy-dom + Testing Library |
-| Package manager | pnpm |
+Licensed under the [PolyForm Shield License 1.0.0](LICENSE) — free to use, modify, and distribute for any purpose except providing a product or service that competes with this software.
+
+Required Notice: Copyright Bipin Radhakrishnan (https://github.com/rbipin/caplog)
