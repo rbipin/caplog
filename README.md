@@ -57,13 +57,13 @@ The outcome is a simple, quick app that stays open on your desktop, where you ca
 <!-- techstack -->
 | Layer | Choice |
 |---|---|
-| Desktop shell | Tauri v2 (Rust backend) |
-| Frontend | React + TypeScript, built with Vite |
-| State | TanStack Query (invalidate-driven, `staleTime: Infinity`) |
-| Storage | SQLite via `tauri-plugin-sql` — migrations auto-run at startup |
-| Content | Markdown, rendered with react-markdown + remark-gfm (raw HTML disabled) |
-| Styling | CSS custom properties, no framework |
-| AI | Anthropic or OpenAI-compatible LLMs (optional) |
+| Desktop shell | Tauri v2 |
+| Frontend | React + TypeScript + Vite |
+| State | TanStack Query |
+| Storage | SQLite |
+| Content | Markdown |
+| Styling | Vanilla CSS |
+| AI | Anthropic or OpenAI-compatible LLMs |
 | Testing | Vitest + Testing Library + happy-dom |
 | Package manager | pnpm |
 <!-- /techstack -->
