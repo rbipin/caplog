@@ -37,17 +37,7 @@ The outcome is a simple, quick app that stays open on your desktop, where you ca
 ## Features
 
 <!-- outcome -->
-| | |
-|---|---|
-| **Log entries** | Type anything and it's formatted by AI into a clean structured entry |
-| **Todo management** | Create, prioritize, and complete tasks with deadlines; toggle priority or set a due date inline via chips |
-| **Sidebar history** | Browse past days with entry previews and per-day completed todo counts |
-| **Chat feed** | Today's entries at the top; past days shown below as collapsible sections |
-| **Log modal** | View all entries for the month in one overlay, with export |
-| **AI formatting** | Anthropic or OpenAI-compatible backends (optional; falls back to raw text) |
-| **Archive navigation** | Calendar-style year view grouped by week; keyword search across past entries; jump to any day |
-| **Archive clean** | Trash icons on day/week/month; confirmation shows exact entry and todo counts before deleting |
-| **Export** | Export all log entries to a Markdown file (header button or log modal footer) |
+This AI-powered work log and productivity app lets users quickly capture free-form notes that are automatically structured into organized log entries. It includes todo management with priorities and due dates, a chat-style activity feed, daily history tracking, and a monthly log view with export capabilities. Users can easily browse and search archived entries through calendar-style navigation, manage historical data with safe deletion options, and export all logs and tasks to Markdown. The app supports optional AI formatting through OpenAI- or Anthropic-compatible backends while gracefully falling back to raw text when AI services are unavailable.
 <!-- /outcome -->
 
 ---
