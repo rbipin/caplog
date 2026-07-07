@@ -34,7 +34,7 @@ The outcome is a simple, quick app that stays open on your desktop, where you ca
 
 ---
 
-## Features
+## Outcome
 
 <!-- outcome -->
 This AI-powered work log and productivity app lets users quickly capture free-form notes that are automatically structured into organized log entries. It includes todo management with priorities and due dates, a chat-style activity feed, daily history tracking, and a monthly log view with export capabilities. Users can easily browse and search archived entries through calendar-style navigation, manage historical data with safe deletion options, and export all logs and tasks to Markdown. The app supports optional AI formatting through OpenAI- or Anthropic-compatible backends while gracefully falling back to raw text when AI services are unavailable.
