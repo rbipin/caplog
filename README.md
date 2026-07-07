@@ -54,7 +54,7 @@ The outcome is a simple, quick app that stays open on your desktop, where you ca
 
 ## Tech Stack
 
-<!-- techStack -->
+<!-- techstack -->
 | Layer | Choice |
 |---|---|
 | Desktop shell | Tauri v2 (Rust backend) |
@@ -66,7 +66,7 @@ The outcome is a simple, quick app that stays open on your desktop, where you ca
 | AI | Anthropic or OpenAI-compatible LLMs (optional) |
 | Testing | Vitest + Testing Library + happy-dom |
 | Package manager | pnpm |
-<!-- /techStack -->
+<!-- /techstack -->
 
 ---
 
