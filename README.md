@@ -2,12 +2,38 @@
 
 # <img src="src-tauri/icons/32x32.png" width="32" alt="CapLog icon"> CapLog
 
+<!-- description -->
 A minimal, distraction-free desktop journaling and task-tracking app. Log what you did, capture todos, and let AI format your entries — all from a single text input.
 
 Built with **Tauri v2** + **React + TypeScript** + **TanStack Query** + **SQLite**. Log entries are stored as **Markdown** and rendered with **react-markdown**.
-
+<!-- /description -->
 ![CapLog screenshot](docs/assets/caplog-screen.png)
 
+---
+
+## Purpose
+<!-- purpose -->
+There are plenty of note-taking apps and todo apps — but they're always separate. I used to write my todos on sticky notes and end up losing the sticky note. Nothing worked as a single suite that doubles as a quick daily log. CapLog exists to fill that gap: one place that helps you quickly journal your day and track your tasks together.
+<!-- /purpose -->
+
+## Outcome
+<!-- outcome -->
+A simple, quick app that stays open on your desktop, where you can quickly journal your daily work progress — so when you want to know what you did last week, it's all right there. AI is integrated into the flow: as you type your journal, it converts your text into bullets, shortens it, and fixes spelling mistakes.
+<!-- /outcome -->
+
+## Tech Stack
+<!-- techStack -->
+| Layer | Technology |
+|-------|------------|
+| Desktop shell | Tauri v2 (Rust backend) |
+| Frontend | React + TypeScript, built with Vite |
+| State | TanStack Query |
+| Storage | SQLite (via tauri-plugin-sql, auto-run migrations) |
+| Content | Markdown, rendered with react-markdown (remark-gfm) |
+| AI | Anthropic or OpenAI-compatible LLMs (optional) |
+| Testing | Vitest + Testing Library + happy-dom |
+| Package manager | pnpm |
+<!-- /techStack -->
 ---
 
 ## Features
