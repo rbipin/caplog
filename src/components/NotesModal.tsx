@@ -93,7 +93,7 @@ export function NotesModal({ onClose }: NotesModalProps) {
         if (e.target === e.currentTarget) void handleClose();
       }}
     >
-      <div className="modal">
+      <div className="modal modal-notes">
         <div className="modal-header">
           <div>
             <div className="modal-title">Notes</div>
@@ -128,7 +128,7 @@ export function NotesModal({ onClose }: NotesModalProps) {
           {status === 'saving' && <span className="notes-status">Saving…</span>}
           {status === 'saved' && <span className="notes-status">Saved</span>}
           {status === 'error' && (
-            <span className="notes-status error">Save failed — will retry</span>
+            <span className="notes-status error">Couldn't save — will retry on next change</span>
           )}
           <button className="btn-ghost" onClick={() => void handleClose()}>
             Close

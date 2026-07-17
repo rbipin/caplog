@@ -103,7 +103,7 @@ describe('NotesModal', () => {
       await waitFor(() => expect(saveNoteMock).toHaveBeenCalledWith('start more'));
 
       await waitFor(() =>
-        expect(screen.getByText(/save failed — will retry/i)).toBeTruthy()
+        expect(screen.getByText(/couldn't save — will retry on next change/i)).toBeTruthy()
       );
       expect(textarea.value).toBe('start more');
     } finally {

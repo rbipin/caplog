@@ -1412,15 +1412,21 @@ details.todo-archive[open] > summary.todo-archive-summary::before {
 }
 
 /* ── Notes modal ── */
+.modal-notes {
+  width: 880px;
+  max-width: 90vw;
+  max-height: 88vh;
+}
+
 .notes-textarea {
   width: 100%;
-  min-height: 320px;
+  min-height: 480px;
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
   resize: vertical;
