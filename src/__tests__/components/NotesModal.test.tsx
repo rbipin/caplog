@@ -85,4 +85,29 @@ describe('NotesModal', () => {
     await waitFor(() => expect(saveNoteMock).toHaveBeenCalledWith('start more'));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('shows an error status and preserves the draft when save fails', async () => {
+    getNoteMock.mockResolvedValue('start');
+    saveNoteMock.mockRejectedValueOnce(new Error('fail'));
+    renderWithProviders(<NotesModal onClose={() => {}} />);
+    await waitFor(() => expect(getNoteMock).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByTestId('notes-view'));
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await userEvent.type(textarea, ' more', { delay: null });
+
+      await vi.advanceTimersByTimeAsync(12500);
+      await waitFor(() => expect(saveNoteMock).toHaveBeenCalledWith('start more'));
+
+      await waitFor(() =>
+        expect(screen.getByText(/save failed — will retry/i)).toBeTruthy()
+      );
+      expect(textarea.value).toBe('start more');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

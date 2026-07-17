@@ -21,6 +21,7 @@ export function NotesModal({ onClose }: NotesModalProps) {
 
   const lastSavedRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef('');
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export function NotesModal({ onClose }: NotesModalProps) {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
     };
   }, []);
 
@@ -60,7 +62,11 @@ export function NotesModal({ onClose }: NotesModalProps) {
       await saveNote.mutateAsync(draftRef.current);
       lastSavedRef.current = draftRef.current;
       setStatus('saved');
-      setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), SAVED_MESSAGE_DURATION_MS);
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+      savedTimeoutRef.current = setTimeout(
+        () => setStatus((s) => (s === 'saved' ? 'idle' : s)),
+        SAVED_MESSAGE_DURATION_MS
+      );
     } catch (err) {
       console.error('Failed to save note:', err);
       setStatus('error');
