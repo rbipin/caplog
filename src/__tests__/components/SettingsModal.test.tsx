@@ -12,6 +12,7 @@ const {
   setChatDaysMock,
   getAdapterMock,
   runLLMMigrationMock,
+  getVersionMock,
 } = vi.hoisted(() => ({
   getChatDaysMock: vi.fn().mockResolvedValue(3),
   getMock: vi.fn().mockResolvedValue('3'),
@@ -21,6 +22,7 @@ const {
   setChatDaysMock: vi.fn().mockResolvedValue(undefined),
   getAdapterMock: vi.fn().mockResolvedValue(null),
   runLLMMigrationMock: vi.fn().mockResolvedValue(undefined),
+  getVersionMock: vi.fn().mockResolvedValue('1.4.0'),
 }));
 
 vi.mock('../../data/settingsRepo', () => ({
@@ -39,6 +41,10 @@ vi.mock('../../llm/factory.js', () => ({
   runLLMMigration: runLLMMigrationMock,
 }));
 
+vi.mock('@tauri-apps/api/app', () => ({
+  getVersion: getVersionMock,
+}));
+
 import { SettingsModal } from '../../components/SettingsModal';
 
 beforeEach(() => {
@@ -46,6 +52,7 @@ beforeEach(() => {
   getChatDaysMock.mockResolvedValue(3);
   getMock.mockResolvedValue('3');
   getLLMConfigMock.mockResolvedValue({ provider: 'anthropic', apiKey: '', model: '', baseUrl: '' });
+  getVersionMock.mockResolvedValue('1.4.0');
 });
 
 describe('SettingsModal', () => {
@@ -100,5 +107,10 @@ describe('SettingsModal', () => {
 
     await userEvent.selectOptions(screen.getByRole('combobox'), 'openai');
     expect(screen.getByPlaceholderText('https://api.openai.com')).toBeTruthy();
+  });
+
+  it('displays the app version from getVersion()', async () => {
+    renderWithProviders(<SettingsModal onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText('v1.4.0')).toBeTruthy());
   });
 });
