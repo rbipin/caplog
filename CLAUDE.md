@@ -51,8 +51,9 @@ Architecture rule: **components → hooks → repos → db**. Only `data/*Repo.t
 | `src/components/SettingsModal.tsx` | LLM provider/key/model/baseUrl/chat_days; save → `settingsRepo` + `refreshAdapter` + `setChatDays` |
 | `src/components/ArchiveModal.tsx` / `ArchiveConfirmModal.tsx` | Year calendar via `useArchiveYear` + `buildWeeks`; keyword search via `useArchiveSearch`; clean ranges via `useDeleteArchiveRange` behind a confirm dialog |
 | `src/components/Markdown.tsx` | Shared react-markdown renderer (remark-gfm; raw HTML disabled for safety). `inline`/block modes; links open via `tauri-plugin-opener` |
+| `src/components/NotesModal.tsx` | Undated plain-text scratchpad (single fixed row, `id=1`). View mode renders Markdown; click switches to an autofocused textarea. Debounced 12s autosave (`useSaveNote`) with `Saving…`/`Saved`/error footer status; flushes the pending save on close. Wider/taller than other modals via the `.modal-notes` CSS class (`src/styles.css`) so it doesn't affect the shared `.modal` class |
 
-**Data layer** lives in `src/data/`: `logEntriesRepo`, `todosRepo`, `settingsRepo`, `archiveRepo` — the only modules that import `db.ts`. **Query hooks** in `src/hooks/` wrap them (`useLogEntries`, `useTodos`, `useDayStats`, `useArchive`, plus `queryKeys.ts`). Mutations invalidate `['logEntries']`, `['todos']`, and `['dayStats']` as appropriate.
+**Data layer** lives in `src/data/`: `logEntriesRepo`, `todosRepo`, `settingsRepo`, `archiveRepo`, `notesRepo` — the only modules that import `db.ts`. **Query hooks** in `src/hooks/` wrap them (`useLogEntries`, `useTodos`, `useDayStats`, `useArchive`, `useNote`/`useSaveNote`, plus `queryKeys.ts`). Mutations invalidate `['logEntries']`, `['todos']`, `['dayStats']`, and `['note']` as appropriate.
 
 **Markdown** lives in `src/markdown/`: `htmlToMarkdown.ts` (legacy HTML→Markdown converter) and `contentMigration.ts` (`runContentMigration()` — one-time startup migration guarded by the `content_format=markdown` setting).
 
@@ -77,7 +78,9 @@ Architecture rule: **components → hooks → repos → db**. Only `data/*Repo.t
 - `lib.rs` — Tauri app setup; all commands registered via `invoke_handler`
 - `main.rs` — entry point that calls `lib::run()`
 
-SQLite migrations run automatically at startup from `src-tauri/migrations/`. Tables: `log_entries`, `todos`, `settings`.
+SQLite migrations run automatically at startup from `src-tauri/migrations/`. Tables: `log_entries`, `todos`, `settings`, `notes` (single fixed row, `id=1`, added in `003_notes.sql`).
+
+App version is sourced statically from `src-tauri/Cargo.toml` (`package.version`) — `tauri.conf.json` has no `version` field, so Tauri falls back to Cargo.toml as the single source of truth. `SettingsModal.tsx` reads it at runtime via `getVersion()` from `@tauri-apps/api/app` and shows it in the footer (`v{appVersion}`).
 
 ### Scripts (`scripts/`)
 
@@ -98,6 +101,7 @@ Tests live in `src/__tests__/`. Run with `pnpm test`.
 - Component tests (`__tests__/components/`) use React Testing Library + `renderWithProviders` (from `__tests__/testUtils.tsx`), which wraps the component in a fresh `QueryClient` + `AppConfigProvider`. They mock at the repo boundary (`vi.mock('../../data/...Repo')`) and the LLM factory.
 - Repo/hook tests mock `../db.js` or the repo module directly.
 - Pure-logic unit tests exist for `commands`, `todoLogic`, `utils`, `ai`, `db`, `export`, `feed`, `logAggregation`, `markdown/`, and `llm/`.
+- `notesRepo`, `useNote`/`useSaveNote`, and `NotesModal` each have their own test file under `src/__tests__/` following the same repo-mock / component-mock conventions.
 - Test environment: Vitest + happy-dom + Testing Library. Tauri plugins are mocked in `src/__mocks__/tauri-plugins.ts`; `src/setupTests.ts` is the global setup.
 
 ## Key conventions

@@ -10,4 +10,5 @@ export const queryKeys = {
   todoById: (id: number) => ['todos', 'byId', id] as const,
   dayStats: (days: number) => ['dayStats', days] as const,
   settings: ['settings'] as const,
+  note: ['note'] as const,
 };

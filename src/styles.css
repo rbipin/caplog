@@ -1410,3 +1410,46 @@ details.todo-archive[open] > summary.todo-archive-summary::before {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* ── Notes modal ── */
+.modal-notes {
+  width: 880px;
+  max-width: 90vw;
+  max-height: 88vh;
+}
+
+.notes-textarea {
+  width: 100%;
+  min-height: 480px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.notes-placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+  cursor: text;
+  padding: 14px;
+}
+
+.notes-status {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-right: auto;
+}
+
+.notes-status.error {
+  color: var(--red);
+}

@@ -9,6 +9,7 @@ import { TodoPanel } from '../components/TodoPanel';
 import { LogModal } from '../components/LogModal';
 import { SettingsModal } from '../components/SettingsModal';
 import { ArchiveModal } from '../components/ArchiveModal';
+import { NotesModal } from '../components/NotesModal';
 import { parseCommand } from '../commands.js';
 import { formatLogEntry } from '../ai.js';
 import { exportMarkdown } from '../export.js';
@@ -18,7 +19,8 @@ type ModalState =
   | { kind: 'none' }
   | { kind: 'log'; day: string | null }
   | { kind: 'settings' }
-  | { kind: 'archive' };
+  | { kind: 'archive' }
+  | { kind: 'notes' };
 
 export function App() {
   const { adapter } = useAppConfig();
@@ -98,6 +100,9 @@ export function App() {
           <button className="btn-ghost" id="viewLogBtn" onClick={() => setModal({ kind: 'log', day: null })}>
             ⊞ View Log
           </button>
+          <button className="btn-ghost" id="notesBtn" onClick={() => setModal({ kind: 'notes' })}>
+            📝 Notes
+          </button>
           <button className="btn-ghost" id="exportBtn" onClick={() => void exportMarkdown()}>
             ↗ Export .md
           </button>
@@ -129,6 +134,7 @@ export function App() {
           onClose={() => setModal({ kind: 'none' })}
         />
       )}
+      {modal.kind === 'notes' && <NotesModal onClose={() => setModal({ kind: 'none' })} />}
     </div>
   );
 }

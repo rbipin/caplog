@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
 import { settingsRepo } from '../data/settingsRepo';
 import { useAppConfig } from '../app/AppConfigContext';
 
@@ -13,18 +14,21 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [model, setModel] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [chatDaysInput, setChatDaysInput] = useState('3');
+  const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
     void (async () => {
-      const [cfg, days] = await Promise.all([
+      const [cfg, days, version] = await Promise.all([
         settingsRepo.getLLMConfig(),
         settingsRepo.get('chat_days'),
+        getVersion(),
       ]);
       setProvider(cfg.provider ?? 'anthropic');
       setApiKey(cfg.apiKey ?? '');
       setModel(cfg.model ?? '');
       setBaseUrl(cfg.baseUrl ?? '');
       setChatDaysInput(days ?? '3');
+      setAppVersion(version);
     })();
   }, []);
 
@@ -149,6 +153,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           <button id="saveSettingsBtn" className="settings-save-btn" onClick={() => void save()}>
             Save
           </button>
+          <p className="settings-hint" id="appVersionText">
+            v{appVersion}
+          </p>
         </div>
       </div>
     </div>
