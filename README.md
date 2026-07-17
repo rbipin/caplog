@@ -37,7 +37,7 @@ The outcome is a simple, quick app that stays open on your desktop, where you ca
 ## Outcome
 
 <!-- outcome -->
-This AI-powered work log and productivity app lets users quickly capture free-form notes that are automatically structured into organized log entries. It includes todo management with priorities and due dates, a chat-style activity feed, daily history tracking, and a monthly log view with export capabilities. Users can easily browse and search archived entries through calendar-style navigation, manage historical data with safe deletion options, and export all logs and tasks to Markdown. The app supports optional AI formatting through OpenAI- or Anthropic-compatible backends while gracefully falling back to raw text when AI services are unavailable.
+This AI-powered work log and productivity app lets users quickly capture free-form notes that are automatically structured into organized log entries. It includes todo management with priorities and due dates, a chat-style activity feed, daily history tracking, and a monthly log view with export capabilities. A separate, undated Notes scratchpad is always available for plain-text scribbles that don't belong in the dated log, autosaving as you type. Users can easily browse and search archived entries through calendar-style navigation, manage historical data with safe deletion options, and export all logs and tasks to Markdown. The app supports optional AI formatting through OpenAI- or Anthropic-compatible backends while gracefully falling back to raw text when AI services are unavailable.
 <!-- /outcome -->
 
 ---
@@ -69,6 +69,8 @@ This AI-powered work log and productivity app lets users quickly capture free-fo
 | `/todo <task> /by <date>` | Creates a todo with a deadline |
 | `/important <task>` | Creates a high-priority todo |
 | `/done <partial task text>` | Marks the first matching open todo as complete |
+
+The header's **📝 Notes** button opens a separate, undated scratchpad for plain-text scribbles — not part of the dated log, autosaves ~12s after you stop typing.
 ---
 
 ## Architecture
@@ -89,10 +91,10 @@ This AI-powered work log and productivity app lets users quickly capture free-fo
 │  └──────────┘   │  └────────────┘  │   └─────────────┘ │
 │                 └──────────────────┘                    │
 │                                                         │
-│  ┌──────────────┐  ┌──────────────────┐  ┌────────────┐  │
-│  │   LogModal   │  │  SettingsModal   │  │ArchiveModal│  │
-│  │ (month log)  │  │  (LLM config)    │  │ (year view)│  │
-│  └──────────────┘  └──────────────────┘  └────────────┘  │
+│  ┌──────────────┐  ┌──────────────────┐  ┌────────────┐  ┌────────────┐  │
+│  │   LogModal   │  │  SettingsModal   │  │ArchiveModal│  │ NotesModal │  │
+│  │ (month log)  │  │  (LLM config)    │  │ (year view)│  │ (scratchpad│  │
+│  └──────────────┘  └──────────────────┘  └────────────┘  └────────────┘  │
 └─────────────────────────────────────────────────────────┘
                          │ Tauri IPC (invoke)
 ┌─────────────────────────────────────────────────────────┐
@@ -153,7 +155,8 @@ src/
 │   ├── ArchiveModal.tsx    ← Year-view calendar archive + keyword search
 │   ├── ArchiveConfirmModal.tsx ← Confirmation dialog for archive deletion
 │   ├── LogModal.tsx        ← Monthly / single-day log overlay
-│   ├── SettingsModal.tsx   ← LLM provider/model/chat_days config
+│   ├── SettingsModal.tsx   ← LLM provider/model/chat_days config + app version
+│   ├── NotesModal.tsx      ← Undated scratchpad, view/edit + debounced autosave
 │   ├── Sidebar.tsx         ← Past days list
 │   ├── TodoPanel.tsx       ← Right-panel todo list
 │   └── TodoItem.tsx        ← Single todo row with inline editing
@@ -161,7 +164,8 @@ src/
 │   ├── logEntriesRepo.ts
 │   ├── todosRepo.ts
 │   ├── settingsRepo.ts
-│   └── archiveRepo.ts
+│   ├── archiveRepo.ts
+│   └── notesRepo.ts
 ├── hooks/                  ← TanStack Query hooks (useLogEntries, useTodos, …)
 ├── markdown/
 │   ├── htmlToMarkdown.ts   ← Legacy HTML → Markdown converter
@@ -224,6 +228,13 @@ The connection string is the relative path `sqlite:caplog.db` (see `src/db.ts` a
 | `key` | TEXT PK | `llm_provider`, `llm_api_key`, `llm_model`, `llm_base_url`, `chat_days` |
 | `value` | TEXT | |
 
+### `notes`
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | single fixed row, always `1` |
+| `content` | TEXT | raw Markdown/plain text scratchpad content |
+| `updated_at` | TEXT | nullable, ISO 8601, set on save |
+
 **Known keys:**
 
 | Key | Default | Description |
@@ -249,6 +260,8 @@ Open **Settings** (gear icon) and configure:
 | Show days | Number of past days to show in the sidebar and completed-todo list (default: 3) |
 
 LLM is **optional** — if not configured, entries are saved as plain text wrapped in `<ul><li>`.
+
+The Settings modal footer also shows the running app version (e.g. `v1.4.0`), read at runtime via Tauri's `getVersion()` API. The version itself is sourced from `src-tauri/Cargo.toml` (`package.version`) at build time — `tauri.conf.json` has no separate `version` field to avoid drift.
 
 ---
 

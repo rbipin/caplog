@@ -42,6 +42,11 @@ stored in the local SQLite `settings` table.
 Because there are no custom `#[tauri::command]` functions, the frontend never uses
 `invoke()` for app logic — the "backend" is really just the SQLite database and the OS-level
 plugin bridge (`tauri-plugin-sql`, `tauri-plugin-fs`, `tauri-plugin-dialog`, `tauri-plugin-opener`).
+The one exception is `getVersion()` from `@tauri-apps/api/app` (used by `SettingsModal` to display
+the running app version) — a built-in Tauri API, not a custom command, so it doesn't affect the
+"empty `invoke_handler`" statement above. The version string itself is sourced from
+`src-tauri/Cargo.toml`'s `package.version` at build time — `tauri.conf.json` has no `version`
+field, so Tauri falls back to Cargo.toml as the single source of truth.
 
 ### Rust side (`src-tauri/src/lib.rs`)
 
@@ -57,7 +62,7 @@ tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .plugin(
         tauri_plugin_sql::Builder::default()
-            .add_migrations("sqlite:caplog.db", vec![migration_001, migration_002])
+            .add_migrations("sqlite:caplog.db", vec![migration_001, migration_002, migration_003])
             .build(),
     )
     .invoke_handler(tauri::generate_handler![])   // no custom commands
@@ -68,6 +73,7 @@ tauri::Builder::default()
   `src-tauri/migrations/*.sql` and are embedded into the binary via `include_str!`.
   - `001_init.sql` — creates `log_entries`, `todos`, `settings`.
   - `002_settings_chat_days.sql` — seeds `settings.chat_days = '3'`.
+  - `003_notes.sql` — creates `notes` and seeds its single fixed row (`id=1`, empty content).
 - **Plugins**:
   - `tauri-plugin-sql` — exposes a JS `Database` handle (`@tauri-apps/plugin-sql`) for `select`/`execute` against `caplog.db`.
   - `tauri-plugin-fs` — used by the frontend to write the exported Markdown file.
@@ -148,6 +154,7 @@ getSetting/setSetting/deleteSetting(key)  // convenience wrappers over the `sett
 | `todosRepo` | `todos` | `list(cutoffDays?)` (open todos always included; completed todos older than the cutoff excluded), `listCompleted()`, `getById(id)`, `add`, `completeTodo`, `completeByText` (fuzzy `LIKE` match, used by `/done`), `reopen`, `setImportant`, `setDeadline`, `updateText`, `remove` |
 | `settingsRepo` | `settings` | Generic `get/set/remove`, plus typed helpers: `getChatDays`/`setChatDays` (clamped 1–14), `getLLMConfig`/`saveLLMConfig`/`clearLLMConfig` |
 | `archiveRepo` | `log_entries`, `todos` | Year-level aggregates for the Archive calendar: `yearEntryCounts`, `yearDoneCounts`, `searchDates` (keyword search across `formatted_text`), `countRange`/`deleteRange` (day/week/month bulk delete for "clean up" workflows) |
+| `notesRepo` | `notes` | `getNote()` / `saveNote(content)` against the single fixed row (`id = 1`) — no multi-note support, intentionally YAGNI |
 
 Repos return **typed domain objects** (`LogEntry`, `TodoItem`, `DayStats`) defined in
 `src/types.ts` — never raw `unknown` rows — so a future move to a different storage backend
@@ -156,7 +163,7 @@ would only require reimplementing this layer.
 ### 3.3 Hooks (`src/hooks/*.ts`) — TanStack Query bindings
 
 `src/hooks/queryKeys.ts` is the single source of truth for query key shapes (`logEntries`,
-`todos`, `dayStats`, `settings`, plus `archive`).
+`todos`, `dayStats`, `settings`, `note`, plus `archive`).
 
 - `useLogEntries.ts` — `useRecentLogEntries(days)`, `useAllLogEntries()`, `useLogEntriesByDate(date)`,
   plus mutations `useInsertLogEntry`/`useUpdateLogEntry`/`useDeleteLogEntry`.
@@ -165,6 +172,9 @@ would only require reimplementing this layer.
 - `useDayStats.ts` — `useDayStats(days)` for the sidebar's per-day summary cards.
 - `useArchive.ts` — `useArchiveYear(year)` (builds week buckets via `archiveUtils.buildWeeks`),
   `useArchiveSearch(year, q)`, `useDeleteArchiveRange()`.
+- `useNote.ts` — `useNote()` (fetches the single scratchpad row) and `useSaveNote()` (mutation,
+  invalidates `note` on success). `NotesModal` debounces edits itself (12s) before calling the
+  mutation — the hook has no debounce logic of its own.
 
 **Invalidation strategy**: the `QueryClient` is configured with `staleTime: Infinity` and
 `retry: false` (`src/app/providers.tsx`) — this is an **invalidate-driven** cache, appropriate for
@@ -179,8 +189,9 @@ query keys it can affect:
 ### 3.4 Components (`src/components/`, `src/app/`)
 
 `src/app/App.tsx` is the root orchestrator: it owns modal open-state (`log | settings | archive |
-none`), ephemeral `Notice[]` state (system messages like "AI formatting failed — saved raw text"),
-and `handleSubmit`, which is the single entry point for turning chat input into a mutation.
+notes | none`), ephemeral `Notice[]` state (system messages like "AI formatting failed — saved raw
+text"), and `handleSubmit`, which is the single entry point for turning chat input into a
+mutation.
 
 | Component | Role |
 |---|---|
@@ -191,6 +202,7 @@ and `handleSubmit`, which is the single entry point for turning chat input into 
 | `LogModal` | Overlay: `day === null` → month view (`buildDayLogs`); a specific date → single-day view; footer "Export .md" |
 | `SettingsModal` | LLM provider/key/model/baseUrl + `chat_days`; save → `settingsRepo.saveLLMConfig` + `refreshAdapter()` + `setChatDays()` |
 | `ArchiveModal` / `ArchiveConfirmModal` | Year calendar (`useArchiveYear` + `buildWeeks`); keyword search (`useArchiveSearch`); "clean range" flow behind a confirm dialog (`useDeleteArchiveRange`) |
+| `NotesModal` | Undated single-row scratchpad; view mode renders Markdown, click switches to an autofocused textarea; 12s debounced autosave via `useSaveNote` with `Saving…`/`Saved`/error footer status; flushes any pending save on close. Rendered wider/taller than other modals via the `.modal-notes` CSS class, which layers on top of (not replaces) the shared `.modal` class so `LogModal`/`SettingsModal`/`ArchiveModal` are unaffected |
 | `Markdown` | Shared `react-markdown` renderer (`remark-gfm`, raw HTML disabled); `inline`/block modes; links open via `tauri-plugin-opener` instead of in-webview navigation |
 
 **Component connection graph:**
@@ -210,12 +222,14 @@ flowchart TB
     App --> LogModal
     App --> SettingsModal
     App --> ArchiveModal
+    App --> NotesModal
 
     ChatInput -- "onSubmit(text)" --> App
 
     ChatArea --> Markdown1["Markdown"]
     Sidebar --> Markdown2["Markdown"]
     LogModal --> Markdown3["Markdown"]
+    NotesModal --> Markdown4["Markdown"]
     TodoPanel --> TodoItem
 
     ArchiveModal --> ArchiveConfirmModal
@@ -236,6 +250,7 @@ flowchart TB
     TodoItem --> HooksTodo2["useCompleteTodo / useReopenTodo / useSetTodoImportant / useSetTodoDeadline / useUpdateTodoText / useDeleteTodo"]
     LogModal --> HooksAll["useAllLogEntries / useLogEntriesByDate / useCompletedTodos"]
     ArchiveModal --> HooksArchive["useArchiveYear / useArchiveSearch / useDeleteArchiveRange"]
+    NotesModal --> HooksNote["useNote / useSaveNote"]
     SettingsModal -- "no dedicated hook — calls repo directly" --> SettingsRepo["settingsRepo"]
 
     HooksLog --> Repos["Repos (src/data/*)"]
@@ -243,6 +258,7 @@ flowchart TB
     HooksTodo1 --> Repos
     HooksTodo2 --> Repos
     HooksAll --> Repos
+    HooksNote --> Repos
     HooksArchive --> Repos
     SettingsRepo --> Repos
 
@@ -259,12 +275,15 @@ store, independent of TanStack Query's server-state cache:
 - `currentDate` — local `YYYY-MM-DD`, refreshed by a **60-second interval** that detects a local
   day rollover and invalidates `logEntries`/`todos`/`dayStats` so the feed re-buckets into "Today".
 
-**Recurring/deferred timers in the app** (`grep -rn "setInterval|setTimeout" src/`, three total):
+**Recurring/deferred timers in the app** (`grep -rn "setInterval|setTimeout" src/`, four total):
 1. `src/main.tsx` — one-shot 3s `setTimeout` safety net during bootstrap (see §2).
 2. `src/app/AppConfigContext.tsx` — 60s `setInterval` polling for a local day rollover (above).
 3. `src/components/ArchiveModal.tsx` — 200ms `setTimeout` debouncing the Archive search input
    before it drives `useArchiveSearch` (cleared/reset on every keystroke via `clearTimeout` in the
    effect's cleanup).
+4. `src/components/NotesModal.tsx` — 12s `setTimeout` debouncing autosave (reset on every
+   keystroke, flushed synchronously on close), plus a 3s `setTimeout` reverting the footer's
+   "Saved" status back to idle; both are cleared on unmount.
 
 ---
 
@@ -474,6 +493,11 @@ erDiagram
         text key PK
         text value
     }
+    NOTES {
+        int id PK "always 1"
+        text content
+        text updated_at "nullable"
+    }
 ```
 
 ```sql
@@ -502,6 +526,15 @@ CREATE TABLE settings (
 );
 -- 002_settings_chat_days.sql
 INSERT OR IGNORE INTO settings (key, value) VALUES ('chat_days', '3');
+
+-- 003_notes.sql
+CREATE TABLE notes (
+  id         INTEGER PRIMARY KEY,
+  content    TEXT NOT NULL DEFAULT '',
+  updated_at TEXT             -- nullable, set on save
+);
+
+INSERT INTO notes (id, content, updated_at) VALUES (1, '', NULL);  -- single fixed row
 ```
 
 Known `settings` keys (all managed through `settingsRepo`): `chat_days`, `llm_provider`,
