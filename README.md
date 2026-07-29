@@ -23,7 +23,7 @@
 ## Overview
 
 <!-- description -->
-CapLog is a chat-style daily log: type into one input and it becomes a **Markdown journal entry** or a **todo** (via slash commands). AI optionally cleans up each entry as you write. Everything is stored locally in SQLite.
+CapLog is a chat-style daily log: type into one input and it becomes a Markdown journal entry or a todo (via slash commands). AI optionally cleans up each entry as you write. Everything is stored locally in SQLite.
 <!-- /description -->
 
 <!-- purpose -->
