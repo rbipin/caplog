@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { todoStatus } from '../todoLogic.js';
+import { todoStatus, daysUntilDue } from '../todoLogic.js';
 import { Markdown } from './Markdown';
 import {
   useCompleteTodo,
@@ -15,6 +15,7 @@ type EditMode = 'none' | 'text' | 'meta';
 
 export function TodoItem({ todo }: { todo: Todo }) {
   const status = todoStatus(todo);
+  const dueSoon = daysUntilDue(todo);
   const completed = status === 'completed';
   const [edit, setEdit] = useState<EditMode>('none');
   const [textDraft, setTextDraft] = useState(todo.text);
@@ -63,7 +64,7 @@ export function TodoItem({ todo }: { todo: Todo }) {
   };
 
   return (
-    <div className={`todo-item${status !== 'open' ? ` ${status}` : ''}`} onClick={onRootClick}>
+    <div className={`todo-item${status !== 'open' ? ` ${status}` : ''}${dueSoon ? ` due-soon-${dueSoon}` : ''}`} onClick={onRootClick}>
       <div
         className="todo-check"
         style={completed ? { cursor: 'pointer' } : undefined}

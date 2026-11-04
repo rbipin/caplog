@@ -4,6 +4,7 @@ import { useRecentLogEntries, useUpdateLogEntry, useDeleteLogEntry } from '../ho
 import { useTodos } from '../hooks/useTodos';
 import { buildFeed, type FeedItem } from '../feed.js';
 import { formatLogEntry } from '../ai.js';
+import { todoStatus, daysUntilDue } from '../todoLogic.js';
 import { formatTime, parseLocalDate } from '../utils.js';
 import { Markdown } from './Markdown';
 import type { LogEntry, TodoItem } from '../types.js';
@@ -79,6 +80,12 @@ function TodoCreatedMessage({ todo }: { todo: TodoItem }) {
   );
 }
 
+function dueClass(todo: TodoItem): string {
+  const soon = daysUntilDue(todo);
+  if (soon) return `due-soon-${soon}`;
+  return todoStatus(todo) === 'overdue' ? 'overdue' : '';
+}
+
 function CarriedOverSection({ todos }: { todos: TodoItem[] }) {
   return (
     <Message time="" typeClass="todo-created" typeLabel="Open todos">
@@ -86,7 +93,7 @@ function CarriedOverSection({ todos }: { todos: TodoItem[] }) {
         <div key={`carried-${todo.id}`}>
           ☐ <Markdown inline>{todo.text}</Markdown>
           {!!todo.is_important && ' ★'}
-          {todo.deadline && <span style={{ color: 'var(--text-dim)' }}> — due {todo.deadline}</span>}
+          {todo.deadline && <span className={`carried-due ${dueClass(todo)}`}> — due {todo.deadline}</span>}
         </div>
       ))}
     </Message>

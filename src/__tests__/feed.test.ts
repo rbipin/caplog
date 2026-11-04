@@ -105,6 +105,22 @@ describe('buildFeed', () => {
     expect(days[0].carriedOver.map((t) => t.id)).toEqual([3, 2, 1]);
   });
 
+  it('orders carried-over todos by deadline within a group, no deadline last', () => {
+    const created_at = '2026-06-20T08:00:00.000';
+    const days = buildFeed(
+      [],
+      [
+        todo({ id: 1, created_at }),
+        todo({ id: 2, created_at, deadline: '2026-06-29' }),
+        todo({ id: 3, created_at, deadline: '2026-06-27' }),
+        todo({ id: 4, created_at, deadline: '2026-06-24' }),
+        todo({ id: 5, created_at, deadline: '2026-06-25' }),
+      ],
+      TODAY
+    );
+    expect(days[0].carriedOver.map((t) => t.id)).toEqual([4, 5, 3, 2, 1]);
+  });
+
   it('keeps an open todo created today inline, not carried over', () => {
     const days = buildFeed([], [todo({ id: 7 })], TODAY);
     expect(days[0].carriedOver).toEqual([]);

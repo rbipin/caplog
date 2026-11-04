@@ -705,6 +705,10 @@ html, body {
   border-left-color: var(--red);
 }
 
+.todo-item.due-soon-3 { border-left-color: rgba(242, 201, 76, 0.35); }
+.todo-item.due-soon-2 { border-left-color: rgba(242, 201, 76, 0.65); }
+.todo-item.due-soon-1 { border-left-color: #f2c94c; }
+
 .todo-content {
   flex: 1;
   min-width: 0;
@@ -735,6 +739,10 @@ html, body {
   border-color: var(--red);
 }
 
+.todo-item.due-soon-3 .todo-check { border-color: rgba(242, 201, 76, 0.35); }
+.todo-item.due-soon-2 .todo-check { border-color: rgba(242, 201, 76, 0.65); }
+.todo-item.due-soon-1 .todo-check { border-color: #f2c94c; }
+
 .todo-text {
   font-size: 14px;
   color: var(--text);
@@ -762,6 +770,16 @@ html, body {
 .todo-deadline.overdue {
   color: var(--red);
 }
+
+.todo-item.due-soon-3 .todo-deadline { color: rgba(242, 201, 76, 0.6); }
+.todo-item.due-soon-2 .todo-deadline { color: rgba(242, 201, 76, 0.85); }
+.todo-item.due-soon-1 .todo-deadline { color: #f2c94c; }
+
+.carried-due { color: var(--text-dim); }
+.carried-due.overdue { color: var(--red); }
+.carried-due.due-soon-3 { color: rgba(242, 201, 76, 0.6); }
+.carried-due.due-soon-2 { color: rgba(242, 201, 76, 0.85); }
+.carried-due.due-soon-1 { color: #f2c94c; }
 
 .todo-badge {
   font-size: 10px;

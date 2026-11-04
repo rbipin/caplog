@@ -30,7 +30,7 @@ function carryRank(t: TodoItem, today: string): number {
  * day renders as completed.
  *
  * Open todos created before today are carried over: they appear only in today's
- * `carriedOver` list (Important → Due/Overdue → Open), never in their creation day.
+ * `carriedOver` list (Important → Due/Overdue → Open, earliest deadline first within each), never in their creation day.
  * A completed todo appears only on the day it was completed.
  */
 export function buildFeed(entries: LogEntry[], todos: TodoItem[], today: string): FeedDay[] {
@@ -54,7 +54,11 @@ export function buildFeed(entries: LogEntry[], todos: TodoItem[], today: string)
     const carriedOver = isToday
       ? todos
           .filter((t) => !t.is_completed && t.created_at.slice(0, 10) < today)
-          .sort((a, b) => carryRank(a, today) - carryRank(b, today))
+          .sort(
+            (a, b) =>
+              carryRank(a, today) - carryRank(b, today) ||
+              (a.deadline ?? '9999').localeCompare(b.deadline ?? '9999')
+          )
       : [];
 
     const items: FeedItem[] = [
