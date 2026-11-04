@@ -78,4 +78,63 @@ describe('buildFeed', () => {
     const kinds = days[0].items.map((i) => i.kind);
     expect(kinds).toEqual(['todo-created', 'log']);
   });
+
+  it('carries an older open todo into today only, not its creation day', () => {
+    const days = buildFeed(
+      [entry({ id: 1, date: '2026-06-20', created_at: '2026-06-20T10:00:00.000' })],
+      [todo({ id: 6, created_at: '2026-06-20T08:00:00.000' })],
+      TODAY
+    );
+    expect(days.find((d) => d.date === TODAY)!.carriedOver.map((t) => t.id)).toEqual([6]);
+    const old = days.find((d) => d.date === '2026-06-20')!;
+    expect(old.carriedOver).toEqual([]);
+    expect(old.items.map((i) => i.kind)).toEqual(['log']);
+  });
+
+  it('orders carried-over todos Important, Due/Overdue, then Open', () => {
+    const created_at = '2026-06-20T08:00:00.000';
+    const days = buildFeed(
+      [],
+      [
+        todo({ id: 1, created_at }),
+        todo({ id: 2, created_at, deadline: '2026-06-25' }),
+        todo({ id: 3, created_at, is_important: 1 }),
+      ],
+      TODAY
+    );
+    expect(days[0].carriedOver.map((t) => t.id)).toEqual([3, 2, 1]);
+  });
+
+  it('orders carried-over todos by deadline within a group, no deadline last', () => {
+    const created_at = '2026-06-20T08:00:00.000';
+    const days = buildFeed(
+      [],
+      [
+        todo({ id: 1, created_at }),
+        todo({ id: 2, created_at, deadline: '2026-06-29' }),
+        todo({ id: 3, created_at, deadline: '2026-06-27' }),
+        todo({ id: 4, created_at, deadline: '2026-06-24' }),
+        todo({ id: 5, created_at, deadline: '2026-06-25' }),
+      ],
+      TODAY
+    );
+    expect(days[0].carriedOver.map((t) => t.id)).toEqual([4, 5, 3, 2, 1]);
+  });
+
+  it('keeps an open todo created today inline, not carried over', () => {
+    const days = buildFeed([], [todo({ id: 7 })], TODAY);
+    expect(days[0].carriedOver).toEqual([]);
+    expect(days[0].items[0]).toMatchObject({ kind: 'todo-created' });
+  });
+
+  it('shows a todo completed later only on its completion day', () => {
+    const days = buildFeed(
+      [],
+      [todo({ id: 8, created_at: '2026-06-24T08:00:00.000', is_completed: 1, completed_at: '2026-06-25T09:00:00.000' })],
+      TODAY
+    );
+    expect(days.find((d) => d.date === '2026-06-24')).toBeUndefined();
+    expect(days.find((d) => d.date === '2026-06-25')!.items[0].kind).toBe('todo-completed');
+    expect(days.find((d) => d.date === TODAY)!.carriedOver).toEqual([]);
+  });
 });

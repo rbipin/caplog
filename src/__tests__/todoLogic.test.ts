@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { todoStatus, getTodoSections } from '../todoLogic.js';
+import { todoStatus, getTodoSections, daysUntilDue } from '../todoLogic.js';
+import { formatLocalDate } from '../utils.js';
 import type { TodoItem } from '../types.js';
 
 function makeTodo(overrides: Partial<TodoItem> = {}): TodoItem {
@@ -27,6 +28,35 @@ describe('todoStatus', () => {
   });
   it('no deadline, not important, not completed → open', () => {
     expect(todoStatus(makeTodo())).toBe('open');
+  });
+});
+
+function inDays(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return formatLocalDate(d);
+}
+
+describe('daysUntilDue', () => {
+  it('returns 3, 2, 1 for deadlines 3, 2, 1 days away', () => {
+    expect(daysUntilDue(makeTodo({ deadline: inDays(3) }))).toBe(3);
+    expect(daysUntilDue(makeTodo({ deadline: inDays(2) }))).toBe(2);
+    expect(daysUntilDue(makeTodo({ deadline: inDays(1) }))).toBe(1);
+  });
+  it('returns null on the due day (overdue takes over)', () => {
+    expect(daysUntilDue(makeTodo({ deadline: inDays(0) }))).toBeNull();
+  });
+  it('returns null for deadlines more than 3 days away', () => {
+    expect(daysUntilDue(makeTodo({ deadline: inDays(4) }))).toBeNull();
+  });
+  it('returns null without a deadline', () => {
+    expect(daysUntilDue(makeTodo())).toBeNull();
+  });
+  it('returns null for important todos', () => {
+    expect(daysUntilDue(makeTodo({ deadline: inDays(2), is_important: 1 }))).toBeNull();
+  });
+  it('returns null for completed todos', () => {
+    expect(daysUntilDue(makeTodo({ deadline: inDays(2), is_completed: 1 }))).toBeNull();
   });
 });
 

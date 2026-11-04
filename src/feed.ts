@@ -9,7 +9,15 @@ export interface FeedDay {
   /** Local date key, `YYYY-MM-DD`. */
   date: string;
   isToday: boolean;
+  /** Open todos created before today, pinned above today's items. Always empty for past days. */
+  carriedOver: TodoItem[];
   items: FeedItem[];
+}
+
+function carryRank(t: TodoItem, today: string): number {
+  if (t.is_important) return 0;
+  if (t.deadline && t.deadline <= today) return 1;
+  return 2;
 }
 
 /**
@@ -20,6 +28,10 @@ export interface FeedDay {
  * Within a day, items are ordered by their timestamp (log/created → `created_at`,
  * a separate completion → `completed_at`). A todo created and completed on the same
  * day renders as completed.
+ *
+ * Open todos created before today are carried over: they appear only in today's
+ * `carriedOver` list (Important → Due/Overdue → Open, earliest deadline first within each), never in their creation day.
+ * A completed todo appears only on the day it was completed.
  */
 export function buildFeed(entries: LogEntry[], todos: TodoItem[], today: string): FeedDay[] {
   const dates = new Set<string>();
@@ -31,11 +43,23 @@ export function buildFeed(entries: LogEntry[], todos: TodoItem[], today: string)
 
   return sorted.map((date) => {
     const dayEntries = entries.filter((e) => e.date === date);
-    const createdTodos = todos.filter((t) => t.created_at.startsWith(date));
     const completedTodos = todos.filter(
       (t) => t.completed_at && t.completed_at.slice(0, 10) === date
     );
     const completedIds = new Set(completedTodos.map((t) => t.id));
+    const isToday = date === today;
+    const createdTodos = todos.filter(
+      (t) => t.created_at.startsWith(date) && (completedIds.has(t.id) || (isToday && !t.is_completed))
+    );
+    const carriedOver = isToday
+      ? todos
+          .filter((t) => !t.is_completed && t.created_at.slice(0, 10) < today)
+          .sort(
+            (a, b) =>
+              carryRank(a, today) - carryRank(b, today) ||
+              (a.deadline ?? '9999').localeCompare(b.deadline ?? '9999')
+          )
+      : [];
 
     const items: FeedItem[] = [
       ...dayEntries.map((entry) => ({ kind: 'log' as const, sortKey: entry.created_at, entry })),
@@ -49,6 +73,6 @@ export function buildFeed(entries: LogEntry[], todos: TodoItem[], today: string)
         .map((todo) => ({ kind: 'todo-completed' as const, sortKey: todo.completed_at!, todo })),
     ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
-    return { date, isToday: date === today, items };
+    return { date, isToday, carriedOver, items };
   });
 }

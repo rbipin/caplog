@@ -4,6 +4,7 @@ import { useRecentLogEntries, useUpdateLogEntry, useDeleteLogEntry } from '../ho
 import { useTodos } from '../hooks/useTodos';
 import { buildFeed, type FeedItem } from '../feed.js';
 import { formatLogEntry } from '../ai.js';
+import { todoStatus, daysUntilDue } from '../todoLogic.js';
 import { formatTime, parseLocalDate } from '../utils.js';
 import { Markdown } from './Markdown';
 import type { LogEntry, TodoItem } from '../types.js';
@@ -44,6 +45,7 @@ export function ChatArea({ notices }: { notices: Notice[] }) {
                 <div className="day-divider-line" />
               </div>
             </summary>
+            {day.carriedOver.length > 0 && <CarriedOverSection todos={day.carriedOver} />}
             {day.items.map((item) => (
               <FeedRow key={feedKey(item)} item={item} />
             ))}
@@ -74,6 +76,26 @@ function TodoCreatedMessage({ todo }: { todo: TodoItem }) {
   return (
     <Message time={formatTime(todo.created_at)} typeClass="todo-created" typeLabel={label}>
       <Markdown inline>{todo.text}</Markdown>
+    </Message>
+  );
+}
+
+function dueClass(todo: TodoItem): string {
+  const soon = daysUntilDue(todo);
+  if (soon) return `due-soon-${soon}`;
+  return todoStatus(todo) === 'overdue' ? 'overdue' : '';
+}
+
+function CarriedOverSection({ todos }: { todos: TodoItem[] }) {
+  return (
+    <Message time="" typeClass="todo-created" typeLabel="Open todos">
+      {todos.map((todo) => (
+        <div key={`carried-${todo.id}`}>
+          ☐ <Markdown inline>{todo.text}</Markdown>
+          {!!todo.is_important && ' ★'}
+          {todo.deadline && <span className={`carried-due ${dueClass(todo)}`}> — due {todo.deadline}</span>}
+        </div>
+      ))}
     </Message>
   );
 }
