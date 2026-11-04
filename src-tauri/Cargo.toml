@@ -1,6 +1,6 @@
 [package]
 name = "caplog"
-version = "1.5.0"
+version = "1.5.1"
 description = "CapLog"
 authors = ["Bipin Radhakrishnan"]
 edition = "2021"
