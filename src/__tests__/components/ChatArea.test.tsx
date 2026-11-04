@@ -74,6 +74,26 @@ describe('ChatArea', () => {
     expect(screen.getByText('Todo created')).toBeTruthy();
   });
 
+  it('groups older open todos under one Open todos section in today', async () => {
+    listRecentMock.mockResolvedValue([]);
+    listTodosMock.mockResolvedValue([
+      {
+        id: 6,
+        text: 'book dentist',
+        is_important: 1,
+        is_completed: 0,
+        deadline: null,
+        created_at: '2020-01-01T08:00:00.000',
+        completed_at: null,
+      },
+    ]);
+
+    renderWithProviders(<ChatArea notices={[]} />);
+
+    await waitFor(() => expect(screen.getByText('book dentist')).toBeTruthy());
+    expect(screen.getByText('Open todos')).toBeTruthy();
+  });
+
   it('renders today-only ephemeral notices', async () => {
     listRecentMock.mockResolvedValue([]);
     listTodosMock.mockResolvedValue([]);

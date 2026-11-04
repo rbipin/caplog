@@ -44,6 +44,7 @@ export function ChatArea({ notices }: { notices: Notice[] }) {
                 <div className="day-divider-line" />
               </div>
             </summary>
+            {day.carriedOver.length > 0 && <CarriedOverSection todos={day.carriedOver} />}
             {day.items.map((item) => (
               <FeedRow key={feedKey(item)} item={item} />
             ))}
@@ -74,6 +75,20 @@ function TodoCreatedMessage({ todo }: { todo: TodoItem }) {
   return (
     <Message time={formatTime(todo.created_at)} typeClass="todo-created" typeLabel={label}>
       <Markdown inline>{todo.text}</Markdown>
+    </Message>
+  );
+}
+
+function CarriedOverSection({ todos }: { todos: TodoItem[] }) {
+  return (
+    <Message time="" typeClass="todo-created" typeLabel="Open todos">
+      {todos.map((todo) => (
+        <div key={`carried-${todo.id}`}>
+          ☐ <Markdown inline>{todo.text}</Markdown>
+          {!!todo.is_important && ' ★'}
+          {todo.deadline && <span style={{ color: 'var(--text-dim)' }}> — due {todo.deadline}</span>}
+        </div>
+      ))}
     </Message>
   );
 }
